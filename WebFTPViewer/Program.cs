@@ -1,5 +1,7 @@
+using Blazored.LocalStorage;
 using WebFTPViewer.Client.Pages;
 using WebFTPViewer.Components;
+using WebFTPViewer.Hubs;
 
 namespace WebFTPViewer
 {
@@ -15,6 +17,21 @@ namespace WebFTPViewer
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
             builder.Services.AddControllers();
+            builder.Services.AddHttpClient();
+
+            builder.Services.AddSignalR();
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials()   // important for SignalR
+                        .SetIsOriginAllowed(_ => true); // allow all origins (for dev)
+                });
+            });
+            builder.Services.AddBlazoredLocalStorage();
 
             var app = builder.Build();
 
@@ -35,11 +52,14 @@ namespace WebFTPViewer
             app.UseHttpsRedirection();
 
             app.UseAntiforgery();
+            app.UseCors();
+            app.MapHub<FTPHub>("/api/ftphub");
 
             app.MapStaticAssets();
             app.MapRazorComponents<App>()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
+            app.MapControllers();
 
             app.Run();
         }

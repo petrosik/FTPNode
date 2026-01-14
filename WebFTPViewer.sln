@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebFTPViewer", "WebFTPViewe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebFTPViewer.Client", "WebFTPViewer.Client\WebFTPViewer.Client.csproj", "{E4DB1599-2A34-483D-8AAE-43DE07DB6D25}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "..\Shared\Shared.csproj", "{B2DA6F07-C2F4-45F1-96EF-9A3BB30E0C78}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{B2DA6F07-C2F4-45F1-96EF-9A3BB30E0C78}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Shared;
+using FluentFTP;
 
 namespace WebFTPViewer.Controllers
 {
@@ -8,11 +9,6 @@ namespace WebFTPViewer.Controllers
     [ApiController]
     public class FtpSetupController : ControllerBase
     {
-        [HttpPost("Login")]
-        public IActionResult Login([FromBody] LoginJson info)
-        {
-            
-            return Ok(new { Message = "FTP Setup Endpoint is working." });
-        }
+        
     }
 }

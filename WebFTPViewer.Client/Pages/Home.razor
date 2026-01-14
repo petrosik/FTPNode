@@ -1,7 +1,15 @@
-﻿@* @using FluentFTP *@
-@using System.Net
+﻿@using System.Net
 @using Shared
+@using Petrosik.Http
+@using Blazored.LocalStorage
+@using Microsoft.AspNetCore.SignalR.Client;
+@using Microsoft.Extensions.Configuration;
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 @page "/"
+@inject HttpClient Http
+@* @inject ProtectedLocalStorage LocalStorage *@
+@inject IConfiguration Env
+@rendermode InteractiveWebAssembly
 
 @if (!LoggedIn)
 {
@@ -13,7 +21,7 @@
 					<p style="margin:0">
 						Host:
 					</p>
-					<InputText @bind-value=LoginStuff.Host />
+					<InputText @bind-value=LoginStuff.Host placeholder="10.0.0.0 or example.com"/>
 					<p style="margin:0">
 						Port:
 					</p>
@@ -25,16 +33,24 @@
 					<p style="margin:0">
 						Password:
 					</p>
-					<InputText @bind-value=LoginStuff.Password />
+					<InputText @bind-Value="LoginStuff.Password" type="@(ShowPass ? "text" : "password")" />
 				</div>
-				<label>
-					Remember Me:
-					<InputCheckbox @bind-Value=RememberMe />
-				</label>
-				<label>
-					Passive Mode:
-					<InputCheckbox @bind-Value=UsePassiveMode />
-				</label>
+				<div style="display:flex; flex-direction:row; justify-content:space-between; gap:10vw">
+					<div style="display:flex; flex-direction:column; justify-content:space-between;gap:2vh">
+					<label>
+						Remember Me:
+						<InputCheckbox @bind-Value=RememberMe.RememberMe @onclick=OnRememberChange/>
+					</label>
+					<label>
+						Passive Mode:
+						<InputCheckbox @bind-Value=UsePassiveMode />
+					</label>
+					</div>
+					<label>
+						Show Password:
+						<InputCheckbox @bind-Value=ShowPass />
+					</label>
+				</div>
 				<button type="submit" style="">
 					Login
 				</button>
@@ -54,26 +70,43 @@ Welcome to your new app.
 {
 	private bool LoggedIn = false;
 	private LoginJson LoginStuff { get; set; } = new();
-	private bool RememberMe { get; set; } = false;
+	private RememberMeDto RememberMe { get; set; } = new();
 	private bool UsePassiveMode { get; set; } = true;
-	// private FtpClient? Client { get; set; } = null;
+	private bool ShowPass { get; set; } = false;
+	private HubConnection? Hub { get; set; }
 
 	private async Task OnLogin()
 	{
-		// if (Client != null) Client.Dispose();
-		// try
+		if (Hub != null)
+		{
+			await Hub.StopAsync();
+			await Hub.DisposeAsync();
+			Hub = null;
+		}
+		var baseUrl = Env.GetValue<string>("ApiBaseUrl");
+		Hub = new HubConnectionBuilder()
+			.WithUrl($"{baseUrl}ftphub") // replace with your hub URL
+			.WithAutomaticReconnect()                 // optional: auto-reconnect
+			.Build();
+		await Hub.StartAsync();
+	}
+	private async Task OnRememberChange()
+	{
+		RememberMe.Host = LoginStuff.Host;
+		RememberMe.Port = LoginStuff.Port;
+		RememberMe.Username = LoginStuff.Username;
+		// await LocalStorage.SetItemAsync("rememberMe",RememberMe);
+	}
+	protected override async Task OnParametersSetAsync()
+	{
+		// var rememberMeTask = await LocalStorage.GetItemAsync<RememberMeDto>("rememberMe");
+		// if (rememberMeTask != null)
 		// {
-		// 	Client = new(Host, Port)
-		// 	{
-		// 		Credentials = new NetworkCredential(Username, Password)
-		// 	};
-		// 	Client.Connect();
-		// 	LoggedIn = true;
+		// 	RememberMe = rememberMeTask;
+		// 	LoginStuff.Host = RememberMe.Host;
+		// 	LoginStuff.Port = RememberMe.Port;
+		// 	LoginStuff.Username = RememberMe.Username;
 		// }
-		// catch (Exception e)
-		// {
-		// 	Console.WriteLine(e);
-		// }
-
+		await base.OnParametersSetAsync();
 	}
 }
