@@ -17,13 +17,15 @@ namespace Shared
         public string Username { get; set; }
         [Required]
         public string Password { get; set; }
+        public bool PassiveMode { get; set; } = true;
 
-        public LoginJson(string host, int port, string username, string password)
+        public LoginJson(string host, int port, string username, string password, bool passivemode)
         {
             Host = host;
             Port = port;
             Username = username;
             Password = password;
+            PassiveMode = passivemode;
         }
         public LoginJson() { }
     }

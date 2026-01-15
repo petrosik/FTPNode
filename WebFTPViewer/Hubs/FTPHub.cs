@@ -14,7 +14,6 @@ namespace WebFTPViewer.Hubs
 
         public override async Task OnConnectedAsync()
         {
-            Console.WriteLine("connected");
             await base.OnConnectedAsync();
         }
 
@@ -22,7 +21,7 @@ namespace WebFTPViewer.Hubs
         {
             if (_ftpClients.TryGetValue(Context.ConnectionId, out var ftpClient))
             {
-                await Task.Run(() => ftpClient.UploadFile(localPath, remotePath));
+                ftpClient.UploadFile(localPath, remotePath);
                 await Clients.Caller.SendAsync("UploadResult", "Success");
             }
             else
@@ -40,7 +39,7 @@ namespace WebFTPViewer.Hubs
             }
             await base.OnDisconnectedAsync(exception);
         }
-        public async Task<bool> InitFtp([FromBody] LoginJson info)
+        public async Task<string> InitFtp(LoginJson info)
         {
             try
             {
@@ -54,15 +53,15 @@ namespace WebFTPViewer.Hubs
                     //}
                 };
 
-                await Task.Run(() => ftpClient.Connect());
+                ftpClient.Connect();
 
                 _ftpClients[Context.ConnectionId] = ftpClient;
-                return true;
+                return "true";
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error initializing FTP client: {ex.Message}");
-                return false;
+                return $"{ex.Message} | {ex.StackTrace}";
             }
         }
     }

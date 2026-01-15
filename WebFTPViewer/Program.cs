@@ -1,4 +1,3 @@
-using Blazored.LocalStorage;
 using WebFTPViewer.Client.Pages;
 using WebFTPViewer.Components;
 using WebFTPViewer.Hubs;
@@ -31,7 +30,6 @@ namespace WebFTPViewer
                         .SetIsOriginAllowed(_ => true); // allow all origins (for dev)
                 });
             });
-            builder.Services.AddBlazoredLocalStorage();
 
             var app = builder.Build();
 

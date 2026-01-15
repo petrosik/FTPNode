@@ -1,4 +1,3 @@
-using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
 namespace WebFTPViewer.Client
@@ -14,7 +13,6 @@ namespace WebFTPViewer.Client
             //    .AddEnvironmentVariables();
             var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
             ?? throw new InvalidOperationException("ApiBaseUrl not configured");
-            builder.Services.AddBlazoredLocalStorage();
             builder.Services.AddScoped(sp =>
             new HttpClient
             {

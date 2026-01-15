@@ -1,14 +1,15 @@
 ﻿@using System.Net
 @using Shared
 @using Petrosik.Http
-@using Blazored.LocalStorage
 @using Microsoft.AspNetCore.SignalR.Client;
 @using Microsoft.Extensions.Configuration;
 @using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+@using System.Text.Json;
 @page "/"
 @inject HttpClient Http
 @* @inject ProtectedLocalStorage LocalStorage *@
 @inject IConfiguration Env
+@inject IJSRuntime JS
 @rendermode InteractiveWebAssembly
 
 @if (!LoggedIn)
@@ -16,45 +17,55 @@
 	<div style="width:100vw; height:100vh; background-color:rgba(0,0,0,0.3	); position:absolute; top:0; left:0; z-index:2050; display:flex; justify-content:center; align-items:center">
 		<div style="background-color:white; border-radius:5px; min-width: 95%;width:65%; height:65%; display:flex; align-items:center;flex-direction:column">
 			<h2 style="font-weight:bold; padding:1%; height:auto; margin:0;">Login</h2>
-			<form @onsubmit="OnLogin" style="display:flex;flex-direction:column; align-items:center; gap:2vh; height:auto; margin:2%">
-				<div style="display:grid; grid-template-columns:10fr 90fr; align-items:center; gap:1%;">
-					<p style="margin:0">
-						Host:
-					</p>
-					<InputText @bind-value=LoginStuff.Host placeholder="10.0.0.0 or example.com"/>
-					<p style="margin:0">
-						Port:
-					</p>
-					<InputNumber @bind-value=LoginStuff.Port placeholder="21" />
-					<p style="margin:0">
-						Username:
-					</p>
-					<InputText @bind-value=LoginStuff.Username />
-					<p style="margin:0">
-						Password:
-					</p>
-					<InputText @bind-Value="LoginStuff.Password" type="@(ShowPass ? "text" : "password")" />
-				</div>
-				<div style="display:flex; flex-direction:row; justify-content:space-between; gap:10vw">
-					<div style="display:flex; flex-direction:column; justify-content:space-between;gap:2vh">
-					<label>
-						Remember Me:
-						<InputCheckbox @bind-Value=RememberMe.RememberMe @onclick=OnRememberChange/>
-					</label>
-					<label>
-						Passive Mode:
-						<InputCheckbox @bind-Value=UsePassiveMode />
-					</label>
+			@if (!Loading)
+			{
+				<form @onsubmit="OnLogin" style="display:flex;flex-direction:column; align-items:center; gap:2vh; height:auto; margin:2%">
+					<div style="display:grid; grid-template-columns:10fr 90fr; align-items:center; gap:1%;">
+						<p style="margin:0">
+							Host:
+						</p>
+						<InputText @bind-value=LoginStuff.Host placeholder="10.0.0.0 or example.com" />
+						<p style="margin:0">
+							Port:
+						</p>
+						<InputNumber @bind-value=LoginStuff.Port placeholder="21" />
+						<p style="margin:0">
+							Username:
+						</p>
+						<InputText @bind-value=LoginStuff.Username />
+						<p style="margin:0">
+							Password:
+						</p>
+						<InputText @bind-Value="LoginStuff.Password" type="@(ShowPass ? "text" : "password")" />
 					</div>
-					<label>
-						Show Password:
-						<InputCheckbox @bind-Value=ShowPass />
-					</label>
-				</div>
-				<button type="submit" style="">
-					Login
-				</button>
-			</form>
+					<div style="display:flex; flex-direction:row; justify-content:space-between; gap:10vw">
+						<div style="display:flex; flex-direction:column; justify-content:space-between;gap:2vh">
+							<label>
+								Remember Me:
+								<InputCheckbox @bind-Value=RememberMe.RememberMe @oninput=OnRememberChange />
+							</label>
+							<label>
+								Passive Mode:
+								<InputCheckbox @bind-Value=RememberMe.PassiveMode />
+							</label>
+						</div>
+						<label>
+							Show Password:
+							<InputCheckbox @bind-Value=ShowPass />
+						</label>
+					</div>
+					<button type="submit" style="">
+						Login
+					</button>
+				</form>
+			}
+			else
+			{
+				<div class="spinner"></div>
+			}
+			<div>
+				<p style="color:red;">@Error</p>
+			</div>
 		</div>
 	</div>
 }
@@ -71,17 +82,22 @@ Welcome to your new app.
 	private bool LoggedIn = false;
 	private LoginJson LoginStuff { get; set; } = new();
 	private RememberMeDto RememberMe { get; set; } = new();
-	private bool UsePassiveMode { get; set; } = true;
 	private bool ShowPass { get; set; } = false;
 	private HubConnection? Hub { get; set; }
+	private bool Loading { get; set; } = true;
+	private string Error { get; set; } = "";
 
 	private async Task OnLogin()
 	{
+		Error = "";
 		if (Hub != null)
 		{
-			await Hub.StopAsync();
-			await Hub.DisposeAsync();
-			Hub = null;
+			try
+			{
+				await Hub.StopAsync();
+				await Hub.DisposeAsync();
+			}
+			catch { }
 		}
 		var baseUrl = Env.GetValue<string>("ApiBaseUrl");
 		Hub = new HubConnectionBuilder()
@@ -89,24 +105,55 @@ Welcome to your new app.
 			.WithAutomaticReconnect()                 // optional: auto-reconnect
 			.Build();
 		await Hub.StartAsync();
+		if (Hub.State == HubConnectionState.Connected)
+		{
+			var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
+			if (!bool.TryParse(res,out _))
+			{
+				Error = res.Substring(0, res.IndexOf('|')).Trim();
+				Console.WriteLine(res.Substring(res.IndexOf('|')+1).Trim());
+			}
+			else
+			{
+				LoggedIn = true;
+			}
+		}
 	}
-	private async Task OnRememberChange()
+	private async Task OnRememberChange(ChangeEventArgs e)
 	{
+		bool newValue = (bool)e.Value;
+		RememberMe.RememberMe = newValue;
+		if (!newValue) { await JS.InvokeVoidAsync("localStorage.removeItem", "rememberMe"); return; }
 		RememberMe.Host = LoginStuff.Host;
 		RememberMe.Port = LoginStuff.Port;
 		RememberMe.Username = LoginStuff.Username;
-		// await LocalStorage.SetItemAsync("rememberMe",RememberMe);
+		RememberMe.PassiveMode = LoginStuff.PassiveMode;
+		await JS.InvokeVoidAsync("localStorage.setItem", "rememberMe", JsonSerializer.Serialize(RememberMe));
 	}
-	protected override async Task OnParametersSetAsync()
+	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
-		// var rememberMeTask = await LocalStorage.GetItemAsync<RememberMeDto>("rememberMe");
-		// if (rememberMeTask != null)
-		// {
-		// 	RememberMe = rememberMeTask;
-		// 	LoginStuff.Host = RememberMe.Host;
-		// 	LoginStuff.Port = RememberMe.Port;
-		// 	LoginStuff.Username = RememberMe.Username;
-		// }
-		await base.OnParametersSetAsync();
+		if (firstRender)
+		{
+			Loading = false;
+			RememberMeDto? rememberMe = null;
+			try
+			{
+				rememberMe = JsonSerializer.Deserialize<RememberMeDto>(await JS.InvokeAsync<string>("localStorage.getItem", "rememberMe"));
+			}
+			catch
+			{
+				Console.WriteLine("Error In Load RememberMe");
+				return;
+			}
+			if (rememberMe != null)
+			{
+				RememberMe = rememberMe;
+				LoginStuff.Host = RememberMe.Host;
+				LoginStuff.Port = RememberMe.Port;
+				LoginStuff.Username = RememberMe.Username;
+				StateHasChanged();
+			}
+		}
+		await base.OnAfterRenderAsync(firstRender);
 	}
 }
