@@ -78,3 +78,10 @@ h1:focus {
         transform: rotate(360deg);
     }
 }
+
+.no-select {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}

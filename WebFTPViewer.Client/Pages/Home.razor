@@ -54,9 +54,16 @@
 							<InputCheckbox @bind-Value=ShowPass />
 						</label>
 					</div>
-					<button type="submit" style="">
-						Login
-					</button>
+					@if (Connecting)
+					{
+						<div style="height:5vh;" class="spinner"></div>
+					}
+					else
+					{
+						<button type="submit">
+							Login
+						</button>
+					}
 				</form>
 			}
 			else
@@ -69,7 +76,24 @@
 		</div>
 	</div>
 }
-
+@if (CurrentDir.HasValue)
+{
+	<div style="display:flex; flex-direction:row;justify-content:space-between">
+		<h2 style="margin:0" class="no-select">@CurrentDir.Value.Key</h2>
+		<button style="border:none; background:none" @onclick="()=>GetDirectory()"><i class="fa-solid fa-arrows-rotate" style="font-size:2rem"></i></button>
+	</div>
+	@foreach (var item in CurrentDir.Value.Value)
+	{
+		<p @onclick="@(()=>GetDirectory($"{CurrentDir.Value.Key}/{item.Name}"))">@item.Name</p>
+	}
+}
+else
+{
+	<div style="height:5vh" class="spinner"></div>
+}
+<div>
+	<p style="color:red;">@Error</p>
+</div>
 <PageTitle>Home</PageTitle>
 
 <h1>Hello, world!</h1>
@@ -80,16 +104,23 @@ Welcome to your new app.
 @code
 {
 	private bool LoggedIn = false;
+	private bool Connecting = false;
 	private LoginJson LoginStuff { get; set; } = new();
 	private RememberMeDto RememberMe { get; set; } = new();
 	private bool ShowPass { get; set; } = false;
 	private HubConnection? Hub { get; set; }
 	private bool Loading { get; set; } = true;
 	private string Error { get; set; } = "";
+	private KeyValuePair<string, List<FtpItemDto>>? CurrentDir { get; set; } = null;
 
 	private async Task OnLogin()
 	{
 		Error = "";
+		Connecting = true;
+		if (RememberMe.RememberMe)
+		{
+			await SaveRememberMe();
+		}
 		if (Hub != null)
 		{
 			try
@@ -108,27 +139,26 @@ Welcome to your new app.
 		if (Hub.State == HubConnectionState.Connected)
 		{
 			var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
-			if (!bool.TryParse(res,out _))
+			if (!bool.TryParse(res, out _))
 			{
 				Error = res.Substring(0, res.IndexOf('|')).Trim();
-				Console.WriteLine(res.Substring(res.IndexOf('|')+1).Trim());
+				Console.WriteLine(res.Substring(res.IndexOf('|') + 1).Trim());
 			}
 			else
 			{
 				LoggedIn = true;
+				CurrentDir = JsonSerializer.Deserialize<KeyValuePair<string, List<FtpItemDto>>>(await Hub.InvokeAsync<string>("GetCurrentDirectory"));
+				Console.WriteLine(await Hub.InvokeAsync<string>("GetCurrentDirectory"));
 			}
 		}
+		Connecting = false;
 	}
 	private async Task OnRememberChange(ChangeEventArgs e)
 	{
 		bool newValue = (bool)e.Value;
 		RememberMe.RememberMe = newValue;
 		if (!newValue) { await JS.InvokeVoidAsync("localStorage.removeItem", "rememberMe"); return; }
-		RememberMe.Host = LoginStuff.Host;
-		RememberMe.Port = LoginStuff.Port;
-		RememberMe.Username = LoginStuff.Username;
-		RememberMe.PassiveMode = LoginStuff.PassiveMode;
-		await JS.InvokeVoidAsync("localStorage.setItem", "rememberMe", JsonSerializer.Serialize(RememberMe));
+		await SaveRememberMe();
 	}
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
@@ -155,5 +185,31 @@ Welcome to your new app.
 			}
 		}
 		await base.OnAfterRenderAsync(firstRender);
+	}
+	private async Task SaveRememberMe()
+	{
+		RememberMe.Host = LoginStuff.Host;
+		RememberMe.Port = LoginStuff.Port;
+		RememberMe.Username = LoginStuff.Username;
+		RememberMe.PassiveMode = LoginStuff.PassiveMode;
+		await JS.InvokeVoidAsync("localStorage.setItem", "rememberMe", JsonSerializer.Serialize(RememberMe));
+	}
+	private async void GetDirectory(string? path = null)
+	{
+		Error = "";
+		StateHasChanged();
+		if (string.IsNullOrWhiteSpace(path))
+		{
+			CurrentDir = JsonSerializer.Deserialize<KeyValuePair<string, List<FtpItemDto>>>(await Hub.InvokeAsync<string>("GetCurrentDirectory"));
+		}
+		else if (Hub != null&&await Hub.InvokeAsync<bool>("GoTo", path))
+		{
+			CurrentDir = JsonSerializer.Deserialize<KeyValuePair<string, List<FtpItemDto>>>(await Hub.InvokeAsync<string>("GetCurrentDirectory"));
+		}
+		else
+		{
+			Error = "Directory Switch Error";
+		}
+		StateHasChanged();
 	}
 }

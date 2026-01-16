@@ -4103,7 +4103,7 @@ textarea.form-control-lg {
     flex-basis: auto;
   }
   .navbar-expand-sm .navbar-toggler {
-    display: none;
+    /*display: none;*/
   }
   .navbar-expand-sm .offcanvas {
     position: static;
@@ -4150,7 +4150,7 @@ textarea.form-control-lg {
     flex-basis: auto;
   }
   .navbar-expand-md .navbar-toggler {
-    display: none;
+    /*display: none;*/
   }
   .navbar-expand-md .offcanvas {
     position: static;
@@ -4197,7 +4197,7 @@ textarea.form-control-lg {
     flex-basis: auto;
   }
   .navbar-expand-lg .navbar-toggler {
-    display: none;
+    /*display: none;*/
   }
   .navbar-expand-lg .offcanvas {
     position: static;
@@ -4244,7 +4244,7 @@ textarea.form-control-lg {
     flex-basis: auto;
   }
   .navbar-expand-xl .navbar-toggler {
-    display: none;
+    /*display: none;*/
   }
   .navbar-expand-xl .offcanvas {
     position: static;
@@ -4291,7 +4291,7 @@ textarea.form-control-lg {
     flex-basis: auto;
   }
   .navbar-expand-xxl .navbar-toggler {
-    display: none;
+   /* display: none;*/
   }
   .navbar-expand-xxl .offcanvas {
     position: static;
@@ -4337,7 +4337,7 @@ textarea.form-control-lg {
   flex-basis: auto;
 }
 .navbar-expand .navbar-toggler {
-  display: none;
+ /* display: none;*/
 }
 .navbar-expand .offcanvas {
   position: static;

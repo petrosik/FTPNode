@@ -1,9 +1,9 @@
 ﻿using FluentFTP;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Shared;
 using System.Collections.Concurrent;
 using System.Net;
+using System.Text.Json;
 
 namespace WebFTPViewer.Hubs
 {
@@ -56,12 +56,41 @@ namespace WebFTPViewer.Hubs
                 ftpClient.Connect();
 
                 _ftpClients[Context.ConnectionId] = ftpClient;
-                return "true";
+                return true.ToString();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error initializing FTP client: {ex.Message}");
                 return $"{ex.Message} | {ex.StackTrace}";
+            }
+        }
+        public async Task<string> GetCurrentDirectory()
+        {
+            var wd = _ftpClients[Context.ConnectionId].GetWorkingDirectory();
+            FtpListItem[] items = _ftpClients[Context.ConnectionId].GetListing(
+                    wd,
+                    FtpListOption.Modify |
+                    FtpListOption.Size |
+                    FtpListOption.NoPath | FtpListOption.IncludeSelfAndParent);
+            return JsonSerializer.Serialize(new KeyValuePair<string, List<FtpItemDto>>(wd, items.Select(i => new FtpItemDto
+            {
+                Name = i.Name,
+                Type = i.Type.ToString(),
+                Size = i.Size,
+                Modified = i.Modified,
+                Permissions = Utils.GetUnixPermissions(i.Chmod)
+            }).ToList()));
+        }
+        public async Task<bool> Goto(string targetPath)
+        {
+            if (_ftpClients[Context.ConnectionId].DirectoryExists(targetPath))
+            {
+                _ftpClients[Context.ConnectionId].SetWorkingDirectory(targetPath);
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
     }
