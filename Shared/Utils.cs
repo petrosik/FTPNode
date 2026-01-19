@@ -25,5 +25,27 @@ namespace Shared
 
             return new string(result); // e.g., "rwxr-xr-x"
         }
+
+        public static double ToKB(this long bytes) => bytes / 1024.0;
+        public static double ToMB(this long bytes) => bytes / (1024.0 * 1024.0);
+        public static double ToGB(this long bytes) => bytes / (1024.0 * 1024.0 * 1024.0);
+        public static string ToClosestSize(this long bytes)
+        {
+            if (bytes < 0)
+                throw new ArgumentOutOfRangeException(nameof(bytes));
+
+            string[] units = { "B", "KB", "MB", "GB", "TB", "PB" };
+            double size = bytes;
+            int unitIndex = 0;
+
+            while (size >= 1024 && unitIndex < units.Length - 1)
+            {
+                size /= 1024;
+                unitIndex++;
+            }
+
+            return $"{size:0.##} {units[unitIndex]}";
+        }
+
     }
 }

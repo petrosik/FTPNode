@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Shared;
 
 namespace WebFTPViewer.Client
 {
@@ -13,6 +14,7 @@ namespace WebFTPViewer.Client
             //    .AddEnvironmentVariables();
             var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
             ?? throw new InvalidOperationException("ApiBaseUrl not configured");
+            builder.Services.AddScoped<AppState>();
             builder.Services.AddScoped(sp =>
             new HttpClient
             {

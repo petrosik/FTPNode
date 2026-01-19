@@ -1,3 +1,4 @@
+using Shared;
 using WebFTPViewer.Client.Pages;
 using WebFTPViewer.Components;
 using WebFTPViewer.Hubs;
@@ -18,6 +19,7 @@ namespace WebFTPViewer
             builder.Services.AddControllers();
             builder.Services.AddHttpClient();
 
+            builder.Services.AddScoped<AppState>();
             builder.Services.AddSignalR();
             builder.Services.AddCors(options =>
             {

@@ -7,9 +7,9 @@
 @using System.Text.Json;
 @page "/"
 @inject HttpClient Http
-@* @inject ProtectedLocalStorage LocalStorage *@
 @inject IConfiguration Env
 @inject IJSRuntime JS
+@inject AppState State
 @rendermode InteractiveWebAssembly
 
 @if (!LoggedIn)
@@ -79,12 +79,56 @@
 @if (CurrentDir.HasValue)
 {
 	<div style="display:flex; flex-direction:row;justify-content:space-between">
-		<h2 style="margin:0" class="no-select">@CurrentDir.Value.Key</h2>
-		<button style="border:none; background:none" @onclick="()=>GetDirectory()"><i class="fa-solid fa-arrows-rotate" style="font-size:2rem"></i></button>
+		<div style="display:flex; flex-direction:row;">
+			<button style="border:none; background:none; padding:0" @onclick="@(() => GetDirectory("/"))">
+				<i class="fa-solid fa-house" style="font-size:1.5rem; display:flex; align-items:center"></i>
+			</button>
+			<h2 style="margin:0" class="no-select">/</h2>
+			<div style="display:flex; flex-direction:row; overflow-x:auto; max-width:80vw">
+				@for (int i = 0; i < CurrDirPath.Count; i++)
+				{
+					var d = i;
+					<button style="border:none; background:none; padding:0" @onclick="@(() => { GetDirectory(CurrentDir.Value.Key.Substring(0, CurrentDir.Value.Key.IndexOf(CurrDirPath[d]) + CurrDirPath[d].Length)); })">
+						<h2 style="margin:0; text-wrap-mode:nowrap;text-wrap:nowrap;">@CurrDirPath[i]</h2>
+					</button>
+					@if (CurrDirPath.Count != i + 1)
+					{
+						<h2 style="margin:0" class="no-select">/</h2>
+					}
+				}
+			</div>
+			@if (CurrDirPath.Count > 0)
+			{
+				<h2 style="margin:0" class="no-select">/</h2>
+			}
+		</div>
+		<button style="border:none; background:none" @onclick="() => GetDirectory(null, true)"><i class="fa-solid fa-arrows-rotate" style="font-size:1.75rem; display:flex; align-items:center"></i></button>
 	</div>
-	@foreach (var item in CurrentDir.Value.Value)
+	@if (!Loading)
 	{
-		<p @onclick="@(()=>GetDirectory($"{CurrentDir.Value.Key}/{item.Name}"))">@item.Name</p>
+		<div style="display:grid; grid-template-columns:30px 90fr;">
+			@foreach (var item in CurrentDir.Value.Value.OrderBy(x => x.Type).ThenBy(x => x.Name))
+			{
+				string? v = GetFileIcon(item.Type);
+				if (v == null)
+				{
+					<p style="font-size:7pt">@item.Type</p>
+				}
+				else
+				{
+					<i class="@v" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
+				}
+				<button style=" text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 30fr 30fr;" @onclick="@(() => FileAction(item))">
+					<p style="font-weight:bold; margin-bottom:0; text-align:left;">@item.Name</p>
+					<p style="font-weight:bold; margin-bottom:0; text-align:left;">@item.Size.ToClosestSize()</p>
+					<p style="font-weight:bold; margin-bottom:0; text-align:left;">@item.Permissions</p>
+				</button>
+			}
+		</div>
+	}
+	else
+	{
+		<div style="height:5vh" class="spinner"></div>
 	}
 }
 else
@@ -94,13 +138,6 @@ else
 <div>
 	<p style="color:red;">@Error</p>
 </div>
-<PageTitle>Home</PageTitle>
-
-<h1>Hello, world!</h1>
-
-Welcome to your new app.
-
-
 @code
 {
 	private bool LoggedIn = false;
@@ -112,6 +149,9 @@ Welcome to your new app.
 	private bool Loading { get; set; } = true;
 	private string Error { get; set; } = "";
 	private KeyValuePair<string, List<FtpItemDto>>? CurrentDir { get; set; } = null;
+	private List<string> CurrDirPath { get; set; } = null;
+	private LinkedList<string> History { get; set; } = new();
+	private LinkedListNode<string>? CurrentHis { get; set; } = null;
 
 	private async Task OnLogin()
 	{
@@ -147,11 +187,40 @@ Welcome to your new app.
 			else
 			{
 				LoggedIn = true;
-				CurrentDir = JsonSerializer.Deserialize<KeyValuePair<string, List<FtpItemDto>>>(await Hub.InvokeAsync<string>("GetCurrentDirectory"));
-				Console.WriteLine(await Hub.InvokeAsync<string>("GetCurrentDirectory"));
+				GetDirectory();
 			}
 		}
 		Connecting = false;
+	}
+	protected override void OnInitialized()
+	{
+		State.BackClicked += Back;
+		State.ForwardClicked += Forward;
+		base.OnInitialized();
+	}
+	private void Back()
+	{
+		var prev = CurrentHis?.Previous;
+		if (string.IsNullOrWhiteSpace(prev?.Value))
+		{
+			Error = "Error while going back";
+			StateHasChanged();
+			return;
+		}
+		CurrentHis = prev;
+		GetDirectory(prev.Value, true);
+	}
+	private void Forward()
+	{
+		var next = CurrentHis?.Next;
+		if (string.IsNullOrWhiteSpace(next?.Value))
+		{
+			Error = "Error while going forward";
+			StateHasChanged();
+			return;
+		}
+		CurrentHis = next;
+		GetDirectory(next.Value, true);
 	}
 	private async Task OnRememberChange(ChangeEventArgs e)
 	{
@@ -194,15 +263,16 @@ Welcome to your new app.
 		RememberMe.PassiveMode = LoginStuff.PassiveMode;
 		await JS.InvokeVoidAsync("localStorage.setItem", "rememberMe", JsonSerializer.Serialize(RememberMe));
 	}
-	private async void GetDirectory(string? path = null)
+	private async void GetDirectory(string? path = null, bool ignoreHistory = false)
 	{
 		Error = "";
+		Loading = true;
 		StateHasChanged();
 		if (string.IsNullOrWhiteSpace(path))
 		{
 			CurrentDir = JsonSerializer.Deserialize<KeyValuePair<string, List<FtpItemDto>>>(await Hub.InvokeAsync<string>("GetCurrentDirectory"));
 		}
-		else if (Hub != null&&await Hub.InvokeAsync<bool>("GoTo", path))
+		else if (Hub != null && await Hub.InvokeAsync<bool>("GoTo", path))
 		{
 			CurrentDir = JsonSerializer.Deserialize<KeyValuePair<string, List<FtpItemDto>>>(await Hub.InvokeAsync<string>("GetCurrentDirectory"));
 		}
@@ -210,6 +280,55 @@ Welcome to your new app.
 		{
 			Error = "Directory Switch Error";
 		}
+
+		if (CurrentDir.HasValue)
+		{
+			var p = CurrentDir.Value.Key.Split('/');
+			CurrDirPath = new();
+			if (p.Where(x => !string.IsNullOrWhiteSpace(x)).Count() <= 0)
+			{
+				CurrDirPath = new();
+			}
+			else
+			{
+				CurrDirPath = p.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+			}
+
+			if (!ignoreHistory && (History.Count == 0 || History.Last.Value != CurrentDir.Value.Key))
+			{
+				History.AddLast(CurrentDir.Value.Key);
+				CurrentHis = History.Last;
+			}
+		}
+		Loading = false;
 		StateHasChanged();
+	}
+	private string? GetFileIcon(string type)
+	{
+		switch (type.ToLower())
+		{
+			case "directory":
+				return "fa-solid fa-folder";
+			case "file":
+				return "fa-regular fa-file";
+			default:
+				return null;
+		}
+	}
+	private async Task FileAction(FtpItemDto item)
+	{
+		switch (item.Type.ToLower())
+		{
+			case "directory":
+				GetDirectory($"{CurrentDir.Value.Key}/{item.Name}");
+				return;
+			default:
+				return;
+		}
+	}
+	public void Dispose()
+	{
+		State.BackClicked -= Back;
+		State.ForwardClicked -= Forward;
 	}
 }

@@ -1,4 +1,6 @@
 ﻿@inherits LayoutComponentBase
+@using Shared;
+@inject AppState State
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -7,6 +9,8 @@
     <main>
         <div class="top-row px-4">
             @* <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a> *@
+            <button @onclick="State.TriggerBack"><i style="font-size:2rem" class="fa-solid fa-angle-left"></i></button>
+            <button @onclick="State.TriggerForward"><i style="font-size:2rem" class="fa-solid fa-angle-right"></i></button>
         </div>
 
         <article class="content px-4">

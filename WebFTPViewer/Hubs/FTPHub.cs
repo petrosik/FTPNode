@@ -83,6 +83,7 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<bool> Goto(string targetPath)
         {
+            if (!_ftpClients.ContainsKey(Context.ConnectionId)) return false;
             if (_ftpClients[Context.ConnectionId].DirectoryExists(targetPath))
             {
                 _ftpClients[Context.ConnectionId].SetWorkingDirectory(targetPath);
