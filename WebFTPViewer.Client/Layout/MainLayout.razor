@@ -7,10 +7,14 @@
     </div>
 
     <main>
-        <div class="top-row px-4">
+        <div class="top-row px-4" style="gap:2%">
             @* <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a> *@
-            <button @onclick="State.TriggerBack"><i style="font-size:2rem" class="fa-solid fa-angle-left"></i></button>
-            <button @onclick="State.TriggerForward"><i style="font-size:2rem" class="fa-solid fa-angle-right"></i></button>
+            <button @onclick="State.TriggerUpload" title="Upload File"><i style="font-size:2rem" class="fa-solid fa-file-arrow-up"></i></button>
+            <button @onclick="State.TriggerLogout" title="Logout"><i style="font-size:2rem" class="fa-solid fa-right-from-bracket"></i></button>
+            <div>
+            <button @onclick="State.TriggerBack" title="Back"><i style="font-size:2rem" class="fa-solid fa-angle-left"></i></button>
+            <button @onclick="State.TriggerForward" title="Forward"><i style="font-size:2rem" class="fa-solid fa-angle-right"></i></button>
+            </div>
         </div>
 
         <article class="content px-4">

@@ -4,9 +4,13 @@
     {
         public event Action? BackClicked;
         public event Action? ForwardClicked;
+        public event Action? LogoutClicked;
+        public event Action? UploadClicked;
 
         public void TriggerBack() => BackClicked?.Invoke();
         public void TriggerForward() => ForwardClicked?.Invoke();
+        public void TriggerLogout() => LogoutClicked?.Invoke();
+        public void TriggerUpload() => UploadClicked?.Invoke();
 
         private bool _FullPage = true;
         public bool FullPage

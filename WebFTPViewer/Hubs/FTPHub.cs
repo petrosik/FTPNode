@@ -75,7 +75,7 @@ namespace WebFTPViewer.Hubs
             return JsonSerializer.Serialize(new KeyValuePair<string, List<FtpItemDto>>(wd, items.Select(i => new FtpItemDto
             {
                 Name = i.Name,
-                Type = i.Type.ToString(),
+                Type = Enum.TryParse<FileType>(i.Type.ToString(), out var en)? en:FileType.Unknown,
                 Size = i.Size,
                 Modified = i.Modified,
                 Permissions = Utils.GetUnixPermissions(i.Chmod)

@@ -106,24 +106,31 @@
 	</div>
 	@if (!Loading)
 	{
-		<div style="display:grid; grid-template-columns:30px 90fr;">
-			@foreach (var item in CurrentDir.Value.Value.OrderBy(x => x.Type).ThenBy(x => x.Name))
-			{
-				string? v = GetFileIcon(item.Type);
-				if (v == null)
+		<div style="overflow-y: auto; height:65vh; position: relative;" class="upload-container" @ref="containerRef">
+			<div class="drag-overlay @(isDragging ? "visible" : "")">
+				Drop files here
+			</div>
+			<InputFile id="fileInput" class="file-input-overlay" OnChange="HandleFileSelected" />
+			<div style="display:grid; grid-template-columns:30px 90fr;">
+				@foreach (var item in CurrentDir.Value.Value.OrderBy(x => x.Type).ThenBy(x => x.Name))
 				{
-					<p style="font-size:7pt">@item.Type</p>
+					string? v = GetFileIcon(item.Type);
+					if (v == null)
+					{
+						<p style="font-size:7pt">@item.Type</p>
+					}
+					else
+					{
+						<i class="@v" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
+					}
+					<button style=" text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 30fr 30fr;" @onclick="@(() => FileAction(item))">
+						<p style="font-weight:bold; margin-bottom:0; text-align:left; overflow-x:hidden; text-overflow:ellipsis;" title="@item.Name">@item.Name</p>
+						<p style="font-weight:bold; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color: darkgray" : "")">@item.Size.ToClosestSize()</p>
+						<p style="font-weight:bold; margin-bottom:0; text-align:left;">@item.Permissions</p>
+					</button>
+
 				}
-				else
-				{
-					<i class="@v" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
-				}
-				<button style=" text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 30fr 30fr;" @onclick="@(() => FileAction(item))">
-					<p style="font-weight:bold; margin-bottom:0; text-align:left;">@item.Name</p>
-					<p style="font-weight:bold; margin-bottom:0; text-align:left;">@item.Size.ToClosestSize()</p>
-					<p style="font-weight:bold; margin-bottom:0; text-align:left;">@item.Permissions</p>
-				</button>
-			}
+			</div>
 		</div>
 	}
 	else
@@ -152,7 +159,32 @@ else
 	private List<string> CurrDirPath { get; set; } = null;
 	private LinkedList<string> History { get; set; } = new();
 	private LinkedListNode<string>? CurrentHis { get; set; } = null;
+	private bool isDragging = false;
+	private bool dragEventsRegistered = false;
+	private ElementReference containerRef;
+	private DotNetObjectReference<Home>? dotnetRef;
 
+	private async Task HandleFileSelected(InputFileChangeEventArgs e)
+	{
+		isDragging = false;
+		foreach (var file in e.GetMultipleFiles())
+		{
+			Console.WriteLine($"{file.Name} ({file.Size} bytes)");
+		}
+	}
+	[JSInvokable]
+	public void ShowOverlay()
+	{
+		isDragging = true;
+		StateHasChanged();
+	}
+
+	[JSInvokable]
+	public void HideOverlay()
+	{
+		isDragging = false;
+		StateHasChanged();
+	}
 	private async Task OnLogin()
 	{
 		Error = "";
@@ -161,15 +193,7 @@ else
 		{
 			await SaveRememberMe();
 		}
-		if (Hub != null)
-		{
-			try
-			{
-				await Hub.StopAsync();
-				await Hub.DisposeAsync();
-			}
-			catch { }
-		}
+		await ClearHubConn();
 		var baseUrl = Env.GetValue<string>("ApiBaseUrl");
 		Hub = new HubConnectionBuilder()
 			.WithUrl($"{baseUrl}ftphub") // replace with your hub URL
@@ -196,6 +220,8 @@ else
 	{
 		State.BackClicked += Back;
 		State.ForwardClicked += Forward;
+		State.LogoutClicked += Logout;
+		State.UploadClicked += Upload;
 		base.OnInitialized();
 	}
 	private void Back()
@@ -221,6 +247,20 @@ else
 		}
 		CurrentHis = next;
 		GetDirectory(next.Value, true);
+	}
+	private async void Logout()
+	{
+		await ClearHubConn();
+		LoggedIn = false;
+		Loading = true;
+		CurrentDir = null;
+		dragEventsRegistered = false;
+		await OnAfterRenderAsync(true);
+		StateHasChanged();
+	}
+	private async void Upload()
+	{
+		await JS.InvokeVoidAsync("helpers.openFileDialog", "fileInput");
 	}
 	private async Task OnRememberChange(ChangeEventArgs e)
 	{
@@ -252,6 +292,16 @@ else
 				LoginStuff.Username = RememberMe.Username;
 				StateHasChanged();
 			}
+		}
+		if (!dragEventsRegistered && CurrentDir.HasValue)
+		{
+			dragEventsRegistered = true;
+			dotnetRef = DotNetObjectReference.Create(this);
+			await JS.InvokeVoidAsync(
+				"helpers.registerDragEvents",
+				containerRef,
+				dotnetRef
+			);
 		}
 		await base.OnAfterRenderAsync(firstRender);
 	}
@@ -303,13 +353,13 @@ else
 		Loading = false;
 		StateHasChanged();
 	}
-	private string? GetFileIcon(string type)
+	private string? GetFileIcon(FileType type)
 	{
-		switch (type.ToLower())
+		switch (type)
 		{
-			case "directory":
+			case FileType.Directory:
 				return "fa-solid fa-folder";
-			case "file":
+			case FileType.File:
 				return "fa-regular fa-file";
 			default:
 				return null;
@@ -317,18 +367,34 @@ else
 	}
 	private async Task FileAction(FtpItemDto item)
 	{
-		switch (item.Type.ToLower())
+		switch (item.Type)
 		{
-			case "directory":
+			case FileType.Directory:
 				GetDirectory($"{CurrentDir.Value.Key}/{item.Name}");
 				return;
 			default:
 				return;
 		}
 	}
+	private async Task ClearHubConn()
+	{
+		if (Hub != null)
+		{
+			try
+			{
+				await Hub.StopAsync();
+				await Hub.DisposeAsync();
+			}
+			catch { }
+		}
+	}
 	public void Dispose()
 	{
 		State.BackClicked -= Back;
 		State.ForwardClicked -= Forward;
+		State.LogoutClicked -= Logout;
+		State.UploadClicked -= Upload;
+
+		ClearHubConn();
 	}
 }
