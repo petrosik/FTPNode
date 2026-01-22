@@ -125,7 +125,7 @@
 					}
 					<button style=" text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 30fr 30fr;" @onclick="@(() => FileAction(item))">
 						<p style="font-weight:bold; margin-bottom:0; text-align:left; overflow-x:hidden; text-overflow:ellipsis;" title="@item.Name">@item.Name</p>
-						<p style="font-weight:bold; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color: darkgray" : "")">@item.Size.ToClosestSize()</p>
+						<p style="font-weight:bold; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color: darkgray" : "")" title="@(item.Type == FileType.Directory ?"Not the size of the content":"")">@item.Size.ToClosestSize()</p>
 						<p style="font-weight:bold; margin-bottom:0; text-align:left;">@item.Permissions</p>
 					</button>
 
@@ -170,6 +170,28 @@ else
 		foreach (var file in e.GetMultipleFiles())
 		{
 			Console.WriteLine($"{file.Name} ({file.Size} bytes)");
+			var chunkSize = 64 * 1024; // 64 KB chunks
+			long offset = 0;
+
+			using var stream = file.OpenReadStream(); // 500MB max maxAllowedSize: 1024 * 1024 * 500
+			byte[] buffer = new byte[chunkSize];
+
+			while (offset < file.Size)
+			{
+				int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+				if (bytesRead == 0) break;
+
+				// Trim buffer for last chunk
+				byte[] chunk = bytesRead == buffer.Length ? buffer : buffer[..bytesRead];
+
+				// Send chunk to SignalR hub
+				await Hub.InvokeAsync<string>("UploadChunk", file.Name, chunk, offset);
+
+				offset += bytesRead;
+			}
+
+			// Notify server that file is complete
+			await Hub.SendAsync("UploadFinish", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.Value.Key});
 		}
 	}
 	[JSInvokable]

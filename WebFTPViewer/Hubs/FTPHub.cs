@@ -1,41 +1,76 @@
 ﻿using FluentFTP;
+using FluentFTP.Streams;
 using Microsoft.AspNetCore.SignalR;
 using Shared;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Net;
 using System.Text.Json;
+using System.Xml.Linq;
 
 namespace WebFTPViewer.Hubs
 {
     public class FTPHub : Hub
     {
         // Store FTP clients per connection
-        private static readonly ConcurrentDictionary<string, FtpClient> _ftpClients = new();
+        private static readonly ConcurrentDictionary<string, Pair<FtpClient,Dictionary<string, Stream>>> _ftpClients = new();
 
         public override async Task OnConnectedAsync()
         {
             await base.OnConnectedAsync();
         }
 
-        public async Task UploadFile(string localPath, string remotePath)
+        public async Task<string> UploadChunk(UploadMetadataDto metadata, byte[] chunk, long offset)
         {
-            if (_ftpClients.TryGetValue(Context.ConnectionId, out var ftpClient))
+            var clientPair = _ftpClients[Context.ConnectionId];
+
+            // Dictionary: name -> IFtpStream
+            var fileStreams = clientPair.Second;
+
+            if (!fileStreams.ContainsKey(metadata.Name))
             {
-                ftpClient.UploadFile(localPath, remotePath);
-                await Clients.Caller.SendAsync("UploadResult", "Success");
+                if (offset != 0)
+                    return "Error: Offset mismatch. Upload not initialized properly.";
+
+                // Open FTP stream for writing
+                var ftpStream = clientPair.First.OpenWrite(metadata.UploadPath + "/" + metadata.Name);
+                fileStreams[metadata.Name] = ftpStream;
             }
-            else
+
+            var stream = fileStreams[metadata.Name];
+
+            // Seek if the FTP stream supports it (some libraries do, some don't)
+            if (offset != stream.Position)
             {
-                await Clients.Caller.SendAsync("UploadResult", "FTP Client not found");
+                stream.Position = offset;
             }
+
+            await stream.WriteAsync(chunk, 0, chunk.Length);
+            await stream.FlushAsync();
+
+            return (stream.Position).ToString(); // next expected offset
+        }
+
+        public async Task UploadFinish(string name)
+        {
+            var clientPair = _ftpClients[Context.ConnectionId];
+            var fileStreams = clientPair.Second;
+
+            if (!fileStreams.TryGetValue(name, out var stream))
+                return;
+            await stream.FlushAsync();
+            stream.Close();
+
+            clientPair.First.GetReply();
+            fileStreams.Remove(name);
         }
 
         public override async Task OnDisconnectedAsync(Exception exception)
         {
             if (_ftpClients.TryRemove(Context.ConnectionId, out var ftpClient))
             {
-                ftpClient.Disconnect();
-                ftpClient.Dispose();
+                ftpClient.First.Disconnect();
+                ftpClient.First.Dispose();
             }
             await base.OnDisconnectedAsync(exception);
         }
@@ -55,7 +90,7 @@ namespace WebFTPViewer.Hubs
 
                 ftpClient.Connect();
 
-                _ftpClients[Context.ConnectionId] = ftpClient;
+                _ftpClients[Context.ConnectionId] = new (ftpClient,new());
                 return true.ToString();
             }
             catch (Exception ex)
@@ -66,8 +101,8 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> GetCurrentDirectory()
         {
-            var wd = _ftpClients[Context.ConnectionId].GetWorkingDirectory();
-            FtpListItem[] items = _ftpClients[Context.ConnectionId].GetListing(
+            var wd = _ftpClients[Context.ConnectionId].First.GetWorkingDirectory();
+            FtpListItem[] items = _ftpClients[Context.ConnectionId].First.GetListing(
                     wd,
                     FtpListOption.Modify |
                     FtpListOption.Size |
@@ -84,9 +119,9 @@ namespace WebFTPViewer.Hubs
         public async Task<bool> Goto(string targetPath)
         {
             if (!_ftpClients.ContainsKey(Context.ConnectionId)) return false;
-            if (_ftpClients[Context.ConnectionId].DirectoryExists(targetPath))
+            if (_ftpClients[Context.ConnectionId].First.DirectoryExists(targetPath))
             {
-                _ftpClients[Context.ConnectionId].SetWorkingDirectory(targetPath);
+                _ftpClients[Context.ConnectionId].First.SetWorkingDirectory(targetPath);
                 return true;
             }
             else

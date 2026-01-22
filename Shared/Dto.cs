@@ -37,4 +37,21 @@ namespace Shared
         public DateTime Modified { get; set; }
         public string Permissions { get; set; }
     }
+    public class UploadMetadataDto
+    {
+        public string Name { get; set; }
+        public long Size { get; set; }
+        public int Permissions { get; set; } = 700;
+        public string UploadPath { get; set; } 
+    }
+    public class Pair<T1, T2>
+    {
+        public T1 First { get; set; }
+        public T2 Second { get; set; }
+        public Pair(T1 first, T2 second)
+        {
+            First = first;
+            Second = second;
+        }
+    }
 }
