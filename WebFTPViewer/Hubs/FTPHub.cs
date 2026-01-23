@@ -33,8 +33,15 @@ namespace WebFTPViewer.Hubs
                     return "Error: Offset mismatch. Upload not initialized properly.";
 
                 // Open FTP stream for writing
-                var ftpStream = clientPair.First.OpenWrite(metadata.UploadPath + "/" + metadata.Name);
+                try
+                {
+                var ftpStream = clientPair.First.OpenWrite(metadata.UploadPath.EndsWith('/')? metadata.UploadPath + metadata.Name : metadata.UploadPath+ "/" + metadata.Name);
                 fileStreams[metadata.Name] = ftpStream;
+                }
+                catch(Exception e)
+                {
+                    return e.Message;
+                }
             }
 
             var stream = fileStreams[metadata.Name];
@@ -64,6 +71,29 @@ namespace WebFTPViewer.Hubs
             clientPair.First.GetReply();
             fileStreams.Remove(name);
         }
+        public async Task UploadCancel(string name)
+        {
+            var clientPair = _ftpClients[Context.ConnectionId];
+            var fileStreams = clientPair.Second;
+
+            if (!fileStreams.TryGetValue(name, out var stream))
+                return;
+
+            try
+            {
+            stream.Close();
+            stream.Dispose();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                Console.WriteLine(e.StackTrace);
+            }
+            finally
+            {
+            fileStreams.Remove(name);
+            }
+        }
 
         public override async Task OnDisconnectedAsync(Exception exception)
         {
@@ -81,11 +111,11 @@ namespace WebFTPViewer.Hubs
                 // Create and connect FTP client when SignalR client connects
                 var ftpClient = new FtpClient(info.Host, new NetworkCredential(info.Username, info.Password), info.Port)
                 {
-                    //Config = new FtpConfig
-                    //{
-                    //    EncryptionMode = FtpEncryptionMode.Explicit,
-                    //    ValidateAnyCertificate = true,
-                    //}
+                    Config = new FtpConfig
+                    {
+                        EncryptionMode = FtpEncryptionMode.Auto,
+                        ValidateAnyCertificate = true,//change to frontend ask
+                    }
                 };
 
                 ftpClient.Connect();
