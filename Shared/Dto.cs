@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Security;
 
 namespace Shared
 {
@@ -36,6 +37,22 @@ namespace Shared
         public long Size { get; set; }
         public DateTime Modified { get; set; }
         public string Permissions { get; set; }
+        public override bool Equals(object? obj)
+        {
+            if (obj == null) return false; 
+            if (obj is FtpItemDto dto)
+            {
+                if (ReferenceEquals(this, dto)) 
+                    return true;
+                else if (dto.Name == Name && dto.Type == Type && dto.Size == Size && dto.Modified == Modified && dto.Permissions == Permissions) 
+                    return true;
+            }
+            return false;
+        }
+        public override int GetHashCode()
+        {
+            return Name.GetHashCode() ^ Type.GetHashCode() ^ Size.GetHashCode() ^ Permissions.GetHashCode();
+        }
     }
     public class UploadMetadataDto
     {

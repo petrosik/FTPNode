@@ -12,6 +12,20 @@
         public void TriggerLogout() => LogoutClicked?.Invoke();
         public void TriggerUpload() => UploadClicked?.Invoke();
 
+        private FtpItemDto? _Selected = null;
+        public FtpItemDto? Selected
+        {
+            get => _Selected;
+            set
+            {
+                if (_Selected != value)
+                {
+                    _Selected = value;
+                    NotifyStateChanged();
+                }
+            }
+        }
+
         private bool _FullPage = true;
         public bool FullPage
         {

@@ -45,3 +45,10 @@ window.helpers.registerDragEvents = (container, dotnet) => {
         inputEl.dispatchEvent(new Event("change", { bubbles: true }));
     });
 };
+
+window.helpers.setEnabled = function (value) {
+    window.onbeforeunload = value ? function (e) {
+        e.preventDefault();
+        e.returnValue = '';
+    } : null;
+};

@@ -1,19 +1,23 @@
 ﻿using FluentFTP;
-using FluentFTP.Streams;
 using Microsoft.AspNetCore.SignalR;
 using Shared;
 using System.Collections.Concurrent;
-using System.IO;
 using System.Net;
 using System.Text.Json;
-using System.Xml.Linq;
+using WebFTPViewer.Services;
 
 namespace WebFTPViewer.Hubs
 {
     public class FTPHub : Hub
     {
         // Store FTP clients per connection
-        private static readonly ConcurrentDictionary<string, Pair<FtpClient,Dictionary<string, Stream>>> _ftpClients = new();
+        private static readonly ConcurrentDictionary<string, Pair<FtpClient, Dictionary<string, Stream>>> _ftpClients = new();
+        private readonly ISharedStorage _sharedStorage;
+
+        public FTPHub(ISharedStorage sharedService)
+        {
+            _sharedStorage = sharedService;
+        }
 
         public override async Task OnConnectedAsync()
         {
@@ -35,10 +39,10 @@ namespace WebFTPViewer.Hubs
                 // Open FTP stream for writing
                 try
                 {
-                var ftpStream = clientPair.First.OpenWrite(metadata.UploadPath.EndsWith('/')? metadata.UploadPath + metadata.Name : metadata.UploadPath+ "/" + metadata.Name);
-                fileStreams[metadata.Name] = ftpStream;
+                    var ftpStream = clientPair.First.OpenWrite(metadata.UploadPath.EndsWith('/') ? metadata.UploadPath + metadata.Name : metadata.UploadPath + "/" + metadata.Name);
+                    fileStreams[metadata.Name] = ftpStream;
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     return e.Message;
                 }
@@ -71,9 +75,13 @@ namespace WebFTPViewer.Hubs
             clientPair.First.GetReply();
             fileStreams.Remove(name);
         }
-        public async Task UploadCancel(string name)
+        public async Task UploadCancel(string name, bool autoDelete)
         {
-            var clientPair = _ftpClients[Context.ConnectionId];
+            if (!_ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
+            {
+                Console.WriteLine("Upload Cancel | Error ftpClients don't contain connection ID");
+                return;
+            }
             var fileStreams = clientPair.Second;
 
             if (!fileStreams.TryGetValue(name, out var stream))
@@ -81,8 +89,12 @@ namespace WebFTPViewer.Hubs
 
             try
             {
-            stream.Close();
-            stream.Dispose();
+                stream.Close();
+                stream.Dispose();
+                if (autoDelete)
+                {
+                    clientPair.First.DeleteFile(name);
+                }
             }
             catch (Exception e)
             {
@@ -91,7 +103,7 @@ namespace WebFTPViewer.Hubs
             }
             finally
             {
-            fileStreams.Remove(name);
+                fileStreams.Remove(name);
             }
         }
 
@@ -101,6 +113,17 @@ namespace WebFTPViewer.Hubs
             {
                 ftpClient.First.Disconnect();
                 ftpClient.First.Dispose();
+                if (ftpClient.Second.Count != 0)
+                {
+                    foreach (var item in ftpClient.Second)
+                    {
+                        item.Value.Close();
+                        item.Value.Dispose();
+                        //need to add settings to keep unfinished files later
+                        //if (_sharedStorage.TryGetArg("autodelete"))
+                        ftpClient.First.DeleteFile(item.Key);
+                    }
+                }
             }
             await base.OnDisconnectedAsync(exception);
         }
@@ -120,7 +143,7 @@ namespace WebFTPViewer.Hubs
 
                 ftpClient.Connect();
 
-                _ftpClients[Context.ConnectionId] = new (ftpClient,new());
+                _ftpClients[Context.ConnectionId] = new(ftpClient, new());
                 return true.ToString();
             }
             catch (Exception ex)
@@ -131,6 +154,7 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> GetCurrentDirectory()
         {
+            if (!_ftpClients.ContainsKey(Context.ConnectionId)) return null;
             var wd = _ftpClients[Context.ConnectionId].First.GetWorkingDirectory();
             FtpListItem[] items = _ftpClients[Context.ConnectionId].First.GetListing(
                     wd,
@@ -140,7 +164,7 @@ namespace WebFTPViewer.Hubs
             return JsonSerializer.Serialize(new KeyValuePair<string, List<FtpItemDto>>(wd, items.Select(i => new FtpItemDto
             {
                 Name = i.Name,
-                Type = Enum.TryParse<FileType>(i.Type.ToString(), out var en)? en:FileType.Unknown,
+                Type = Enum.TryParse<FileType>(i.Type.ToString(), out var en) ? en : FileType.Unknown,
                 Size = i.Size,
                 Modified = i.Modified,
                 Permissions = Utils.GetUnixPermissions(i.Chmod)

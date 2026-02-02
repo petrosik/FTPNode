@@ -2,29 +2,44 @@
 @using Shared;
 @inject AppState State
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+	<div class="sidebar">
+		<NavMenu />
+	</div>
 
-    <main>
-        <div class="top-row px-4" style="gap:2%">
-            @* <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a> *@
-            <button @onclick="State.TriggerUpload" title="Upload File"><i style="font-size:2rem" class="fa-solid fa-file-arrow-up"></i></button>
-            <button @onclick="State.TriggerLogout" title="Logout"><i style="font-size:2rem" class="fa-solid fa-right-from-bracket"></i></button>
-            <div>
-            <button @onclick="State.TriggerBack" title="Back"><i style="font-size:2rem" class="fa-solid fa-angle-left"></i></button>
-            <button @onclick="State.TriggerForward" title="Forward"><i style="font-size:2rem" class="fa-solid fa-angle-right"></i></button>
-            </div>
-        </div>
+	<main>
+		<div class="top-row px-4" style="gap:2%; padding:0.3rem;">
+			@if (State.Selected != null)
+			{
+				<p>selected: @State.Selected.Name</p>
+			}
+			<button class="control-button" @onclick="State.TriggerUpload" title="Upload File"><i style="font-size:2rem" class="fa-solid fa-file-arrow-up"></i></button>
+			<button class="control-button" @onclick="State.TriggerLogout" title="Logout"><i style="font-size:2rem" class="fa-solid fa-right-from-bracket"></i></button>
+			<div style="height:100%;">
+				<button class="control-button" @onclick="State.TriggerBack" title="Back"><i style="font-size:2rem" class="fa-solid fa-angle-left"></i></button>
+				<button class="control-button" @onclick="State.TriggerForward" title="Forward"><i style="font-size:2rem" class="fa-solid fa-angle-right"></i></button>
+			</div>
+		</div>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
+		<article style="padding-top:0.5rem; padding-left:0.5rem; padding-right:0.5rem;">
+			@Body
+		</article>
+	</main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+	An unhandled error has occurred.
+	<a href="." class="reload">Reload</a>
+	<span class="dismiss">🗙</span>
 </div>
+
+@code {
+	protected override void OnInitialized()
+	{
+		State.OnChange += StateHasChanged;
+		base.OnInitialized();
+	}
+	public void Dispose()
+	{
+		State.OnChange -= StateHasChanged;
+	}
+}

@@ -1,7 +1,7 @@
 using Shared;
-using WebFTPViewer.Client.Pages;
 using WebFTPViewer.Components;
 using WebFTPViewer.Hubs;
+using WebFTPViewer.Services;
 
 namespace WebFTPViewer
 {
@@ -20,7 +20,11 @@ namespace WebFTPViewer
             builder.Services.AddHttpClient();
 
             builder.Services.AddScoped<AppState>();
-            builder.Services.AddSignalR();
+            builder.Services.AddSignalR(options =>
+            {
+                options.MaximumReceiveMessageSize = 1024 * 128; // 128KB
+            });
+            builder.Services.AddSingleton<ISharedStorage, SharedStorage>();
             builder.Services.AddCors(options =>
             {
                 options.AddDefaultPolicy(policy =>
@@ -61,6 +65,17 @@ namespace WebFTPViewer
                 .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
             app.MapControllers();
 
+            var sharedService = app.Services.GetRequiredService<ISharedStorage>();
+            foreach (var item in args)
+            {
+                var it = item;
+                if (item.StartsWith('-'))
+                {
+                    it.TrimStart('-');
+                }
+                var splits = it.Split(':');
+                sharedService.SetArg(splits[0].ToLower(), splits.Count() > 1 ? splits[1] : null);
+            }
             app.Run();
         }
     }

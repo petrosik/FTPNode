@@ -115,3 +115,46 @@ h1:focus {
     cursor: pointer;
     display:none;
 }
+
+.button-light {
+    background-color: #eeeeee;
+    color: #222;
+    border: none;
+    border-radius: 2px;
+    /*    border: 1px solid #bbb;*/
+    cursor: pointer;
+    transition: background 0.3s, border 0.3s;
+}
+
+    .button-light:hover {
+        background-color: #e0e0e0;
+        border-color: #aaa;
+    }
+
+.button-dark {
+    background-color: #bbbbbb;
+    color: #111;
+    border: none;
+    border-radius: 2px;
+    /*    border: 1px solid #888;*/
+    cursor: pointer;
+    transition: background 0.3s, border 0.3s;
+}
+
+    .button-dark:hover {
+        background-color: #999999;
+        border-color: #666;
+    }
+.button-selected {
+    background-color: #82e5ff;
+    color: #111;
+}
+
+.control-button {
+    border: none;
+    aspect-ratio:1;
+    padding: 0.25rem;
+    border-radius: 5px;
+    background-color: #ddd;
+    height:100%;
+}
