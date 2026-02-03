@@ -111,19 +111,20 @@ namespace WebFTPViewer.Hubs
         {
             if (_ftpClients.TryRemove(Context.ConnectionId, out var ftpClient))
             {
-                ftpClient.First.Disconnect();
-                ftpClient.First.Dispose();
                 if (ftpClient.Second.Count != 0)
                 {
                     foreach (var item in ftpClient.Second)
                     {
                         item.Value.Close();
                         item.Value.Dispose();
-                        //need to add settings to keep unfinished files later
-                        //if (_sharedStorage.TryGetArg("autodelete"))
-                        ftpClient.First.DeleteFile(item.Key);
+                        if (!_sharedStorage.TryGetArg<bool>("autodelete",out var v) || v)
+                        {
+                            ftpClient.First.DeleteFile(item.Key);
+                        }
                     }
                 }
+                ftpClient.First.Disconnect();
+                ftpClient.First.Dispose();
             }
             await base.OnDisconnectedAsync(exception);
         }

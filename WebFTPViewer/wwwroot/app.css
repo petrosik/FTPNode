@@ -158,3 +158,12 @@ h1:focus {
     background-color: #ddd;
     height:100%;
 }
+.button-context{
+    height:30px;
+    width:100%;
+    text-align:left;
+    border: 1px solid grey
+}
+    .button-context:hover {
+        background-color: #cacaca
+    }

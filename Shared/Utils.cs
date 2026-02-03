@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Shared
+﻿namespace Shared
 {
     public static class Utils
     {
@@ -45,6 +39,46 @@ namespace Shared
             }
 
             return $"{size:0.##} {units[unitIndex]}";
+        }
+
+        public static bool AllowedActions(this FtpItemDto ftpItem, AllowedAction action)
+        {
+            if ((action & AllowedAction.Read) == AllowedAction.Read ||
+                (action & AllowedAction.Download) == AllowedAction.Download ||
+                (action & AllowedAction.Upload) == AllowedAction.Upload ||
+                (action & AllowedAction.Delete) == AllowedAction.Delete ||
+                (action & AllowedAction.Rename) == AllowedAction.Rename ||
+                (action & AllowedAction.ChangePermissions) == AllowedAction.ChangePermissions)
+            {
+                return true;
+            }
+            else if ((action & AllowedAction.Edit) == AllowedAction.Edit && ftpItem.Type == FileType.File)
+            {
+                var ext = System.IO.Path.GetExtension(ftpItem.Name).ToLower();
+                if (ext == ".txt" || 
+                    ext == ".html" || 
+                    ext == ".htm" || 
+                    ext == ".css" || 
+                    ext == ".js" || 
+                    ext == ".json" || 
+                    ext == ".xml" || 
+                    ext == ".md" || 
+                    ext == ".csv" || 
+                    ext == ".log" || 
+                    ext == ".cfg" || 
+                    ext == ".ini" || 
+                    ext == ".bat" || 
+                    ext == ".sh" || 
+                    ext == ".py" || 
+                    ext == ".java" || 
+                    ext == ".c" || 
+                    ext == ".cpp" || 
+                    ext == ".cs")
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
     }
