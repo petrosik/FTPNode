@@ -21,14 +21,20 @@
 			{
 				<form @onsubmit="OnLogin" style="display:flex;flex-direction:column; align-items:center; gap:2vh; height:auto; margin:2%">
 					<div style="display:grid; grid-template-columns:10fr 90fr; align-items:center; gap:1%;">
-						<p style="margin:0">
-							Host:
-						</p>
-						<InputText @bind-value=LoginStuff.Host placeholder="10.0.0.0 or example.com" />
-						<p style="margin:0">
-							Port:
-						</p>
-						<InputNumber @bind-value=LoginStuff.Port placeholder="21" />
+						@if (!Settings.ContainsKey("defaultconnection_host"))
+						{
+							<p style="margin:0">
+								Host:
+							</p>
+							<InputText @bind-value=LoginStuff.Host placeholder="10.0.0.0 or example.com" />
+						}
+						@if (!Settings.ContainsKey("defaultconnection_port"))
+						{
+							<p style="margin:0">
+								Port:
+							</p>
+							<InputNumber @bind-value=LoginStuff.Port placeholder="21" />
+						}
 						<p style="margin:0">
 							Username:
 						</p>
@@ -44,10 +50,13 @@
 								Remember Me:
 								<InputCheckbox @bind-Value=RememberMe.RememberMe @oninput=OnRememberChange />
 							</label>
-							<label>
-								Passive Mode:
-								<InputCheckbox @bind-Value=RememberMe.PassiveMode />
-							</label>
+							@if (!Settings.ContainsKey("defaultconnection_passivemode"))
+							{
+								<label>
+									Passive Mode:
+									<InputCheckbox @bind-Value=RememberMe.PassiveMode />
+								</label>
+							}
 						</div>
 						<label>
 							Show Password:
@@ -156,7 +165,7 @@
 				{
 					<i class="@v" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
 				}
-				<button class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected	" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 30fr 30fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async(e) =>{showMenu = true;xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true);})" @oncontextmenu:preventDefault>
+				<button class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected	" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 30fr 30fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault>
 					<p style="font-weight:bold; margin-bottom:0; text-align:left; overflow-x:hidden; text-overflow:ellipsis;" title="@item.Name">@item.Name</p>
 					<p style="font-weight:bold; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color: #707070" : "")" title="@(item.Type == FileType.Directory ? "Not the size of the content" : "")">@item.Size.ToClosestSize()</p>
 					<p style="font-weight:bold; margin-bottom:0; text-align:left;">@item.Permissions</p>
@@ -181,12 +190,12 @@ else
 </div>
 @if (State.Selected != null && showMenu || true)
 {
-	<div style="background-color:white; display:flex; flex-direction:column; position:absolute; left:@xpx; top:@ypx; min-width:100px; width:20%;" @onmouseleave="()=>{showMenu = false;}">
+	<div style="background-color:white; display:flex; flex-direction:column; position:absolute; left:@xpx; top:@ypx; min-width:100px; width:20%;" @onmouseleave="() => { showMenu = false; }">
 		@if (Utils.AllowedActions(State.Selected, AllowedAction.Delete))
 		{
-		<button class="button-context">
-			Delete
-		</button>
+			<button class="button-context">
+				Delete
+			</button>
 		}
 		<button class="button-context">
 			bbb
@@ -213,6 +222,7 @@ else
 	private ElementReference containerRef;
 	private DotNetObjectReference<Home>? dotnetRef;
 	private Dictionary<string, UploadQueItemDto> UploadQue = new();
+	private Dictionary<string, string> Settings = new();
 
 	private bool showMenu;
 	private string xpx = "200px";
@@ -295,15 +305,16 @@ else
 		{
 			await SaveRememberMe();
 		}
-		await ClearHubConn();
-		var baseUrl = Env.GetValue<string>("ApiBaseUrl");
-		Hub = new HubConnectionBuilder()
-			.WithUrl($"{baseUrl}ftphub") // replace with your hub URL
-			.WithAutomaticReconnect()                 // optional: auto-reconnect
-			.Build();
-		await Hub.StartAsync();
+		await StartHubConn();
 		if (Hub.State == HubConnectionState.Connected)
 		{
+			if (Settings.TryGetValue("defaultconnection_host", out var host))
+				LoginStuff.Host = host;
+			if (Settings.TryGetValue("defaultconnection_port", out var port) && int.TryParse(port, out var pp))
+				LoginStuff.Port = pp;
+			if (Settings.TryGetValue("defaultconnection_passivemode", out var pass) && bool.TryParse(pass, out var pas))
+				LoginStuff.PassiveMode = pas;
+
 			var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
 			if (!bool.TryParse(res, out _))
 			{
@@ -375,7 +386,7 @@ else
 	{
 		if (firstRender)
 		{
-			Loading = false;
+			await StartHubConn();
 			RememberMeDto? rememberMe = null;
 			try
 			{
@@ -394,6 +405,8 @@ else
 				LoginStuff.Username = RememberMe.Username;
 				StateHasChanged();
 			}
+			Loading = false;
+			StateHasChanged();
 		}
 		if (!dragEventsRegistered && CurrentDir.HasValue)
 		{
@@ -496,6 +509,41 @@ else
 			}
 			catch { }
 		}
+	}
+	private async Task StartHubConn()
+	{
+		if (Hub != null && Hub.State != HubConnectionState.Connected)
+		{
+			await ClearHubConn();
+		}
+		if (Hub == null)
+		{
+			var baseUrl = Env.GetValue<string>("ApiBaseUrl");
+			Hub = new HubConnectionBuilder()
+				.WithUrl($"{baseUrl}ftphub")
+				.WithAutomaticReconnect()    
+				.Build();
+			await InitHubStuff();
+			await Hub.StartAsync();
+			Hub.Reconnecting += (e)=> InitHubStuff();
+		}
+	}
+	private async Task InitHubStuff()
+	{
+		if (Hub == null) return;
+		Hub.On<List<Pair>>("ReceiveInitData", data =>
+			{
+				Settings = data.ToDictionary(y => y.Name, x => x.Value);
+				Settings.TryGetValue("defaultconnection", out var host);
+				var sp = host.Split('|');
+				Settings.Add("defaultconnection_host", sp[0]);
+				if (sp.Length > 1)
+					Settings.Add("defaultconnection_port", sp[1]);
+				if (sp.Length > 2)
+					Settings.Add("defaultconnection_passivemode", sp[2]);
+				Settings.Remove("defaultconnection");
+				StateHasChanged();
+			});
 	}
 	public void Dispose()
 	{

@@ -21,6 +21,10 @@ namespace WebFTPViewer.Hubs
 
         public override async Task OnConnectedAsync()
         {
+            var settings = new List<Pair>();
+            if (_sharedStorage.TryGetArg("defaultconnection", out string defconn))
+                settings.Add(new() {Name= "defaultconnection", Value = defconn });
+            await Clients.Caller.SendAsync("ReceiveInitData",settings);
             await base.OnConnectedAsync();
         }
 
