@@ -36,7 +36,7 @@ namespace Shared
         public FileType Type { get; set; }
         public long Size { get; set; }
         public DateTime Modified { get; set; }
-        public string Permissions { get; set; }
+        public int Permissions { get; set; }
         public override bool Equals(object? obj)
         {
             if (obj == null) return false; 

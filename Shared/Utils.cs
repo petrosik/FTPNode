@@ -2,6 +2,25 @@
 {
     public static class Utils
     {
+        public static UnixPermission GetPermissions(int chmod, PermissionScope scope = PermissionScope.Owner)
+        {
+            int shift = scope switch
+            {
+                PermissionScope.Owner => 6,
+                PermissionScope.Group => 3,
+                PermissionScope.Others => 0,
+                _ => 0
+            };
+
+            int bits = (chmod >> shift) & 0b111;
+            UnixPermission result = UnixPermission.None;
+
+            if ((bits & 4) != 0) result |= UnixPermission.Read;
+            if ((bits & 2) != 0) result |= UnixPermission.Write;
+            if ((bits & 1) != 0) result |= UnixPermission.Execute;
+
+            return result;
+        }
         public static string GetUnixPermissions(int chmod)
         {
             // chmod is usually octal: e.g., 755, 644
@@ -41,18 +60,25 @@
             return $"{size:0.##} {units[unitIndex]}";
         }
 
-        public static bool AllowedActions(this FtpItemDto ftpItem, AllowedAction action)
+        public static bool AllowedActions(this FtpItemDto ftpItem, AllowedAction action, long sizeLimit = 10000)
         {
-            if ((action & AllowedAction.Read) == AllowedAction.Read ||
-                (action & AllowedAction.Download) == AllowedAction.Download ||
-                (action & AllowedAction.Upload) == AllowedAction.Upload ||
-                (action & AllowedAction.Delete) == AllowedAction.Delete ||
-                (action & AllowedAction.Rename) == AllowedAction.Rename ||
-                (action & AllowedAction.ChangePermissions) == AllowedAction.ChangePermissions)
+            var perms = GetPermissions(ftpItem.Permissions, PermissionScope.Owner);
+            if (((action & AllowedAction.Read) == AllowedAction.Read || (action & AllowedAction.Download) == AllowedAction.Download) && (perms & UnixPermission.Read) == UnixPermission.Read)
             {
                 return true;
             }
-            else if ((action & AllowedAction.Edit) == AllowedAction.Edit && ftpItem.Type == FileType.File)
+            else if (
+                (action & AllowedAction.Upload) == AllowedAction.Upload ||
+                (action & AllowedAction.Delete) == AllowedAction.Delete ||
+                (action & AllowedAction.Rename) == AllowedAction.Rename)
+            {
+                return true;
+            }
+            else if (((action & AllowedAction.ChangePermissions) == AllowedAction.ChangePermissions) && (perms & UnixPermission.Write) == UnixPermission.Write)
+            {
+                return true;
+            }
+            else if ((action & AllowedAction.Edit) == AllowedAction.Edit && ftpItem.Type != FileType.Directory && ftpItem.Size <=sizeLimit && (perms & UnixPermission.Write) == UnixPermission.Write)
             {
                 var ext = System.IO.Path.GetExtension(ftpItem.Name).ToLower();
                 if (ext == ".txt" || 

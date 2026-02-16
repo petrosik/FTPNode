@@ -1,5 +1,6 @@
-﻿@inherits LayoutComponentBase
+﻿@using WebFTPViewer.Client.Components;
 @using Shared;
+@inherits LayoutComponentBase
 @inject AppState State
 <div class="page">
 	<div class="sidebar">
@@ -10,7 +11,32 @@
 		<div class="top-row px-4" style="gap:2%; padding:0.3rem;">
 			@if (State.Selected != null)
 			{
-				
+				<div style="height:100%; display:flex; gap:2%; padding-right:2%;">
+					@if (Utils.AllowedActions(State.Selected, AllowedAction.Delete))
+					{
+						<ConfirmButton class="control-button" title="Delete Selected" DialogQuestion="@($"Are you sure you want to delete {State.Selected.Name}?")" OnClick="State.TriggerDelete">
+							<i style="font-size:2rem" class="fa-solid fa-trash-can"></i>
+						</ConfirmButton>
+					}
+					@if (Utils.AllowedActions(State.Selected, AllowedAction.Edit))
+					{
+						<button class="control-button" title="Edit">
+							<i style="font-size:2rem" class="fa-solid fa-pen-to-square"></i>
+						</button>
+					}
+					@if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions))
+					{
+						<button class="control-button" title="Permission Change">
+							<i style="font-size:2rem" class="fa-solid fa-unlock-keyhole"></i>
+						</button>
+					}
+					@if (Utils.AllowedActions(State.Selected, AllowedAction.Edit) && Utils.AllowedActions(State.Selected, AllowedAction.Read))
+					{
+						<button class="control-button" title="View">
+							<i style="font-size:2rem" class="fa-solid fa-trash-can"></i>
+						</button>
+					}
+				</div>
 			}
 			<button class="control-button" @onclick="State.TriggerUpload" title="Upload File"><i style="font-size:2rem" class="fa-solid fa-file-arrow-up"></i></button>
 			<button class="control-button" @onclick="State.TriggerLogout" title="Logout"><i style="font-size:2rem" class="fa-solid fa-right-from-bracket"></i></button>
@@ -35,11 +61,16 @@
 @code {
 	protected override void OnInitialized()
 	{
-		State.OnChange += StateHasChanged;
-		base.OnInitialized();
+		State.OnChange += HandleStateChange;
 	}
+
+	private async void HandleStateChange()
+	{
+		await InvokeAsync(StateHasChanged);
+	}
+
 	public void Dispose()
 	{
-		State.OnChange -= StateHasChanged;
+		State.OnChange -= HandleStateChange;
 	}
 }

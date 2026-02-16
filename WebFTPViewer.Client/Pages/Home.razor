@@ -5,6 +5,7 @@
 @using Microsoft.Extensions.Configuration;
 @using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 @using System.Text.Json;
+@using WebFTPViewer.Client.Components;
 @page "/"
 @inject HttpClient Http
 @inject IConfiguration Env
@@ -165,10 +166,10 @@
 				{
 					<i class="@v" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
 				}
-				<button class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected	" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 30fr 30fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault>
+				<button class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 30fr 30fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault>
 					<p style="font-weight:bold; margin-bottom:0; text-align:left; overflow-x:hidden; text-overflow:ellipsis;" title="@item.Name">@item.Name</p>
 					<p style="font-weight:bold; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color: #707070" : "")" title="@(item.Type == FileType.Directory ? "Not the size of the content" : "")">@item.Size.ToClosestSize()</p>
-					<p style="font-weight:bold; margin-bottom:0; text-align:left;">@item.Permissions</p>
+					<p style="font-weight:bold; margin-bottom:0; text-align:left;">@Utils.GetUnixPermissions(item.Permissions)</p>
 				</button>
 				index++;
 			}
@@ -188,18 +189,33 @@ else
 <div>
 	<p style="color:red;">@Error</p>
 </div>
-@if (State.Selected != null && showMenu || true)
+@if (State.Selected != null && showMenu)
 {
 	<div style="background-color:white; display:flex; flex-direction:column; position:absolute; left:@xpx; top:@ypx; min-width:100px; width:20%;" @onmouseleave="() => { showMenu = false; }">
 		@if (Utils.AllowedActions(State.Selected, AllowedAction.Delete))
 		{
-			<button class="button-context">
+			<ConfirmButton class="button-context" DialogQuestion="@($"Are you sure you want to delete {State.Selected.Name}?")" OnClick="Delete">
 				Delete
+			</ConfirmButton>
+		}
+		@if (Utils.AllowedActions(State.Selected, AllowedAction.Edit))
+		{
+			<button class="button-context">
+				Edit
 			</button>
 		}
-		<button class="button-context">
-			bbb
-		</button>
+		@if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions))
+		{
+			<button class="button-context">
+				Permission Change
+			</button>
+		}
+		@if (Utils.AllowedActions(State.Selected, AllowedAction.Edit) && Utils.AllowedActions(State.Selected, AllowedAction.Read))
+		{
+			<button class="button-context">
+				View
+			</button>
+		}
 	</div>
 }
 @code
@@ -227,6 +243,8 @@ else
 	private bool showMenu;
 	private string xpx = "200px";
 	private string ypx = "200px";
+	private string dialogQuestion = "";
+	private Action? dialogAction = null;
 
 
 	private async Task HandleFileSelected(InputFileChangeEventArgs e)
@@ -283,6 +301,10 @@ else
 			UploadRunning = false;
 			await JS.InvokeVoidAsync("helpers.setEnabled", UploadRunning);
 		}
+		else if (UploadQue.Where(x => x.Value.Proggress != 100d).Count() == 0)
+		{
+			await JS.InvokeVoidAsync("helpers.setEnabled", false);
+		}
 	}
 	[JSInvokable]
 	public void ShowOverlay()
@@ -335,6 +357,7 @@ else
 		State.ForwardClicked += Forward;
 		State.LogoutClicked += Logout;
 		State.UploadClicked += Upload;
+		State.DeleteClicked += Delete;
 		base.OnInitialized();
 	}
 	private void Back()
@@ -419,6 +442,17 @@ else
 			);
 		}
 		await base.OnAfterRenderAsync(firstRender);
+	}
+	private async void Delete()
+	{
+		if (State.Selected == null) return;
+		var res = await Hub.InvokeAsync<string>("Delete", State.Selected.Name);
+		if (!bool.TryParse(res, out var v) || !v)
+		{
+			Error = res.Substring(0, res.IndexOf('|')).Trim();
+			Console.WriteLine(res.Substring(res.IndexOf('|') + 1).Trim());
+		}
+		GetDirectory(null, true);
 	}
 	private async Task SaveRememberMe()
 	{
@@ -521,11 +555,11 @@ else
 			var baseUrl = Env.GetValue<string>("ApiBaseUrl");
 			Hub = new HubConnectionBuilder()
 				.WithUrl($"{baseUrl}ftphub")
-				.WithAutomaticReconnect()    
+				.WithAutomaticReconnect()
 				.Build();
 			await InitHubStuff();
 			await Hub.StartAsync();
-			Hub.Reconnecting += (e)=> InitHubStuff();
+			Hub.Reconnecting += (e) => InitHubStuff();
 		}
 	}
 	private async Task InitHubStuff()
@@ -551,6 +585,7 @@ else
 		State.ForwardClicked -= Forward;
 		State.LogoutClicked -= Logout;
 		State.UploadClicked -= Upload;
+		State.DeleteClicked -= Delete;
 
 		ClearHubConn();
 	}

@@ -10,14 +10,27 @@
     [Flags]
     public enum AllowedAction
     {
-        Unknown = -1,
-        Read = 0,
-        Delete = 1,
-        Upload = 2,
-        Download = 4,
-        ChangePermissions = 8,
-        Rename = 16,
-        Edit = 32,
-         
+        None = 0,
+        Read = 1,
+        Delete = 2,
+        Upload = 4,
+        Download = 8,
+        ChangePermissions = 16,
+        Rename = 32,
+        Edit = 64
+    }
+    [Flags]
+    public enum UnixPermission
+    {
+        None = 0,
+        Read = 1,
+        Write = 2,
+        Execute = 4
+    }
+    public enum PermissionScope
+    {
+        Owner,
+        Group,
+        Others
     }
 }

@@ -172,7 +172,7 @@ namespace WebFTPViewer.Hubs
                 Type = Enum.TryParse<FileType>(i.Type.ToString(), out var en) ? en : FileType.Unknown,
                 Size = i.Size,
                 Modified = i.Modified,
-                Permissions = Utils.GetUnixPermissions(i.Chmod)
+                Permissions = i.Chmod
             }).ToList()));
         }
         public async Task<bool> Goto(string targetPath)
@@ -186,6 +186,24 @@ namespace WebFTPViewer.Hubs
             else
             {
                 return false;
+            }
+        }
+        public async Task<string> Delete(string target)
+        {
+            if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+            if (_ftpClients[Context.ConnectionId].First.FileExists(target))
+            {
+                _ftpClients[Context.ConnectionId].First.DeleteFile(target);
+                return "true";
+            }
+            else if (_ftpClients[Context.ConnectionId].First.DirectoryExists(target))
+            {
+                _ftpClients[Context.ConnectionId].First.DeleteDirectory(target);
+                return "true";
+            }
+            else
+            {
+                return "false | Error file or directory could not be found";
             }
         }
     }
