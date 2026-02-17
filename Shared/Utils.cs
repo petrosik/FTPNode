@@ -4,6 +4,10 @@
     {
         public static UnixPermission GetPermissions(int chmod, PermissionScope scope = PermissionScope.Owner)
         {
+            // Convert only if it looks like an octal-text int
+            if (chmod > 511) // real bitmasks never exceed 0777 (511 decimal)
+                chmod = Convert.ToInt32(chmod.ToString(), 8);
+
             int shift = scope switch
             {
                 PermissionScope.Owner => 6,

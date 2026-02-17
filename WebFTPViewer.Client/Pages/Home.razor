@@ -216,6 +216,12 @@ else
 				View
 			</button>
 		}
+		@if (Utils.AllowedActions(State.Selected, AllowedAction.Download))
+		{
+			<button class="button-context" @onclick="Download">
+				Download
+			</button>
+		}
 	</div>
 }
 @code
@@ -257,6 +263,9 @@ else
 		{
 			Console.WriteLine($"{file.Name} ({file.Size} bytes)");
 			var chunkSize = 64 * 1024; // 64 KB chunks
+			if (Settings.TryGetValue("uploadlimit", out var lim) && int.TryParse(lim, out var limit))
+				chunkSize = limit;
+
 			long offset = 0;
 
 			using var stream = file.OpenReadStream(1024L * 1024 * 1024 * 500); // 500GB max
@@ -397,6 +406,73 @@ else
 	private async void Upload()
 	{
 		await JS.InvokeVoidAsync("helpers.openFileDialog", "fileInput");
+	}
+	private async void Download()
+	{
+		if (Hub == null || State.Selected == null)
+			return;
+
+		//check if file exists
+		var res = await Hub.InvokeAsync<string>("DownloadStart", State.Selected.Name);
+		var spl = res.Split('|');
+		if (!bool.TryParse(spl[0].Trim(), out var canDownload) || !canDownload)
+		{
+			Error = spl.Length > 1 ? spl[1].Trim() : "Unknown error while starting download";
+			Console.WriteLine(Error);
+			StateHasChanged();
+			return;
+		}
+
+		// Create JS stream
+		await JS.InvokeVoidAsync("helpers.streamFileDownload", State.Selected);
+
+		long offset = 0;
+
+		while (true)
+		{
+			var result = await Hub.InvokeAsync<Pair<byte[]?, string>>(
+				"DownloadChunk", State.Selected.Name, offset);
+
+			if (result.Second.StartsWith("false"))
+			{
+				var sp =result.Second.Split('|');
+				if (sp[1].Trim().Contains("already started"))
+				{
+					await Hub.InvokeAsync("DownloadCancel", State.Selected.Name);
+					break;
+				}
+				Error = sp[1].Trim();
+				Console.WriteLine(sp[1].Trim());
+				StateHasChanged();
+				break;
+			}
+
+			if (result.Second.Contains("EOF"))
+			{
+				// trigger file save in JS
+				await JS.InvokeVoidAsync("helpers.streamFileDownload", State.Selected.Name); // closes stream
+				break;
+			}
+
+			// validate offset matches the expected
+			spl = result.Second.Split('|');
+			if (spl.Length < 2 || !long.TryParse(spl[1].Trim(), out var expectedOffset) || expectedOffset != offset + result.First.Length)
+			{
+				Error = $"Chunk offset mismatch! Expected {offset}, got {spl[1].Trim()}";
+				Console.WriteLine(Error);
+				StateHasChanged();
+				break;
+			}
+
+			if (result.First != null && result.First.Length > 0)
+			{
+				// convert chunk to Base64 and write via JS
+				string base64Chunk = Convert.ToBase64String(result.First);
+				await JS.InvokeVoidAsync("helpers.writeFileChunk", State.Selected.Name, base64Chunk);
+
+				offset += result.First.Length;
+			}
+		}
 	}
 	private async Task OnRememberChange(ChangeEventArgs e)
 	{
@@ -565,7 +641,7 @@ else
 	private async Task InitHubStuff()
 	{
 		if (Hub == null) return;
-		Hub.On<List<Pair>>("ReceiveInitData", data =>
+		Hub.On<List<Pair>>("ReceiveInitData",async data =>
 			{
 				Settings = data.ToDictionary(y => y.Name, x => x.Value);
 				Settings.TryGetValue("defaultconnection", out var host);
@@ -577,6 +653,19 @@ else
 					Settings.Add("defaultconnection_passivemode", sp[2]);
 				Settings.Remove("defaultconnection");
 				StateHasChanged();
+
+				//try reconnect with current settings if exist
+				var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
+				if (!bool.TryParse(res, out _))
+				{
+					Error = res.Substring(0, res.IndexOf('|')).Trim();
+					Console.WriteLine(res.Substring(res.IndexOf('|') + 1).Trim());
+				}
+				else
+				{
+					LoggedIn = true;
+					GetDirectory();
+				}
 			});
 	}
 	public void Dispose()

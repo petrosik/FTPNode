@@ -4,6 +4,7 @@ using Shared;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
+using System.Xml.Linq;
 using WebFTPViewer.Services;
 
 namespace WebFTPViewer.Hubs
@@ -11,7 +12,8 @@ namespace WebFTPViewer.Hubs
     public class FTPHub : Hub
     {
         // Store FTP clients per connection
-        private static readonly ConcurrentDictionary<string, Pair<FtpClient, Dictionary<string, Stream>>> _ftpClients = new();
+        // first is upload second is download streams
+        private static readonly ConcurrentDictionary<string, Pair<FtpClient, Pair<Dictionary<string, Stream>, Dictionary<string, Stream>>>> _ftpClients = new();
         private readonly ISharedStorage _sharedStorage;
 
         public FTPHub(ISharedStorage sharedService)
@@ -24,6 +26,9 @@ namespace WebFTPViewer.Hubs
             var settings = new List<Pair>();
             if (_sharedStorage.TryGetArg("defaultconnection", out string defconn))
                 settings.Add(new() {Name= "defaultconnection", Value = defconn });
+            if (_sharedStorage.TryGetArg("uploadlimit", out string uploadlimit))
+                settings.Add(new() { Name = "uploadlimit", Value = uploadlimit });
+
             await Clients.Caller.SendAsync("ReceiveInitData",settings);
             await base.OnConnectedAsync();
         }
@@ -35,7 +40,7 @@ namespace WebFTPViewer.Hubs
             // Dictionary: name -> IFtpStream
             var fileStreams = clientPair.Second;
 
-            if (!fileStreams.ContainsKey(metadata.Name))
+            if (!fileStreams.First.ContainsKey(metadata.Name))
             {
                 if (offset != 0)
                     return "Error: Offset mismatch. Upload not initialized properly.";
@@ -44,7 +49,7 @@ namespace WebFTPViewer.Hubs
                 try
                 {
                     var ftpStream = clientPair.First.OpenWrite(metadata.UploadPath.EndsWith('/') ? metadata.UploadPath + metadata.Name : metadata.UploadPath + "/" + metadata.Name);
-                    fileStreams[metadata.Name] = ftpStream;
+                    fileStreams.First[metadata.Name] = ftpStream;
                 }
                 catch (Exception e)
                 {
@@ -52,9 +57,8 @@ namespace WebFTPViewer.Hubs
                 }
             }
 
-            var stream = fileStreams[metadata.Name];
+            var stream = fileStreams.First[metadata.Name];
 
-            // Seek if the FTP stream supports it (some libraries do, some don't)
             if (offset != stream.Position)
             {
                 stream.Position = offset;
@@ -71,13 +75,13 @@ namespace WebFTPViewer.Hubs
             var clientPair = _ftpClients[Context.ConnectionId];
             var fileStreams = clientPair.Second;
 
-            if (!fileStreams.TryGetValue(name, out var stream))
+            if (!fileStreams.First.TryGetValue(name, out var stream))
                 return;
             await stream.FlushAsync();
             stream.Close();
 
             clientPair.First.GetReply();
-            fileStreams.Remove(name);
+            fileStreams.First.Remove(name);
         }
         public async Task UploadCancel(string name, bool autoDelete)
         {
@@ -88,7 +92,7 @@ namespace WebFTPViewer.Hubs
             }
             var fileStreams = clientPair.Second;
 
-            if (!fileStreams.TryGetValue(name, out var stream))
+            if (!fileStreams.First.TryGetValue(name, out var stream))
                 return;
 
             try
@@ -107,24 +111,139 @@ namespace WebFTPViewer.Hubs
             }
             finally
             {
-                fileStreams.Remove(name);
+                fileStreams.First.Remove(name);
             }
+        }
+        public async Task<string> DownloadStart(string filename)
+        {
+            if (!_ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
+                return "false | Error: FTP client not found.";
+
+            var fileStreams = clientPair.Second;
+
+            if (fileStreams.Second.ContainsKey(filename))
+                return "false | Error: Download already started.";
+
+            try
+            {
+                var ftpStream = clientPair.First.OpenRead(filename);
+                fileStreams.Second[filename] = ftpStream;
+                return "true";
+            }
+            catch (Exception e)
+            {
+                return e.Message;
+            }
+        }
+        public async Task<Pair<byte[]?, string>> DownloadChunk(string name, long offset)
+        {
+            if (!_ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
+                return new(null, "false | FTP client not found");
+
+            var fileStreams = clientPair.Second;
+
+            if (!fileStreams.Second.TryGetValue(name, out var stream))
+                return new(null, "false | Download not started");
+
+            try
+            {
+                if (offset != stream.Position)
+                    return new(null, $"false | Offset mismatch. Expected {stream.Position}");
+
+                int chunkSize = 64*1024;
+                if (_sharedStorage.TryGetArg("uploadlimit", out string downloadlim) && int.TryParse(downloadlim, out var downlim))
+                    chunkSize = downlim;
+                byte[] buffer = new byte[chunkSize];
+
+                int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+
+                if (bytesRead == 0)
+                {
+                    try
+                    {
+                        stream.Close();
+                        stream.Dispose();
+
+                        fileStreams.Second.Remove(name);
+                        return new(Array.Empty<byte>(), "true | EOF");
+                    }
+                    catch (Exception e)
+                    {
+                        return new(null,$"false | {e.Message}");
+                    }
+                }
+
+                // Trim buffer if last chunk smaller
+                if (bytesRead < buffer.Length)
+                {
+                    byte[] trimmed = new byte[bytesRead];
+                    Buffer.BlockCopy(buffer, 0, trimmed, 0, bytesRead);
+                    return new(trimmed, $"true | {bytesRead}");
+                }
+
+                return new(buffer, $"true | {bytesRead}");
+            }
+            catch (Exception e)
+            {
+                return new(null, $"false | {e.Message}");
+            }
+        }
+        public async Task<string> DownloadCancel(string name)
+        {
+            if (!_ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
+                return "false | Error: FTP client not found.";
+
+            var fileStreams = clientPair.Second;
+
+            if (!fileStreams.Second.TryGetValue(name, out var stream))
+                return "false | Error: Stream not found.";
+
+            try
+            {
+                stream.Close();
+                stream.Dispose();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+            finally
+            {
+                fileStreams.Second.Remove(name);
+            }
+
+            return "true";
         }
 
         public override async Task OnDisconnectedAsync(Exception exception)
         {
             if (_ftpClients.TryRemove(Context.ConnectionId, out var ftpClient))
             {
-                if (ftpClient.Second.Count != 0)
+                if (ftpClient.Second.First.Count != 0)
                 {
-                    foreach (var item in ftpClient.Second)
+                    foreach (var item in ftpClient.Second.First)
+                    {
+                        try
+                        {
+                            item.Value.Close();
+                            item.Value.Dispose();
+                            if (!_sharedStorage.TryGetArg<bool>("autodelete", out var v) || v)
+                            {
+                                ftpClient.First.DeleteFile(item.Key);
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine($"Error cleaning up {item.Key}: {e.Message}");
+                        }
+                    }
+                }
+                if (ftpClient.Second.Second.Count != 0)
+                {
+                    foreach (var item in ftpClient.Second.Second)
                     {
                         item.Value.Close();
                         item.Value.Dispose();
-                        if (!_sharedStorage.TryGetArg<bool>("autodelete",out var v) || v)
-                        {
-                            ftpClient.First.DeleteFile(item.Key);
-                        }
                     }
                 }
                 ftpClient.First.Disconnect();
@@ -148,7 +267,7 @@ namespace WebFTPViewer.Hubs
 
                 ftpClient.Connect();
 
-                _ftpClients[Context.ConnectionId] = new(ftpClient, new());
+                _ftpClients[Context.ConnectionId] = new(ftpClient, new(new(), new()));
                 return true.ToString();
             }
             catch (Exception ex)
