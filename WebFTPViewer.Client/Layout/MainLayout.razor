@@ -20,25 +20,25 @@
 					}
 					@if (Utils.AllowedActions(State.Selected, AllowedAction.Edit))
 					{
-						<button class="control-button" title="Edit">
+						<button class="control-button" title="Edit" @onclick="State.TriggerEdit">
 							<i style="font-size:2rem" class="fa-solid fa-pen-to-square"></i>
 						</button>
 					}
 					@if (Utils.AllowedActions(State.Selected, AllowedAction.Edit) && Utils.AllowedActions(State.Selected, AllowedAction.Read))
 					{
-						<button class="control-button" title="View">
+						<button class="control-button" title="View" @onclick="State.TriggerView">
 							<i style="font-size:2rem" class="fa-solid fa-expand"></i>
 						</button>
 					}
 					@if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions))
 					{
-						<button class="control-button" title="Permission Change">
+						<button class="control-button" title="Permission Change" @onclick="State.TriggerPermChange">
 							<i style="font-size:2rem" class="fa-solid fa-unlock-keyhole"></i>
 						</button>
 					}
 					@if (Utils.AllowedActions(State.Selected, AllowedAction.Download))
 					{
-						<button class="control-button" title="Permission Change">
+						<button class="control-button" title="Permission Change" @onclick="State.TriggerDownload">
 							<i style="font-size:2rem" class="fa-solid fa-download"></i>
 						</button>
 					}

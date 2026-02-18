@@ -12,7 +12,7 @@
     },
     "https": {
       "commandName": "Project",
-      "commandLineArgs": "\"title:FTP pp\" defaultconnection:192.168.33.10|21",
+      "commandLineArgs": "\"title:FTP pp\" defaultconnection:192.168.33.10|21 downloadlimit:1048576",
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"

@@ -85,24 +85,24 @@
             else if ((action & AllowedAction.Edit) == AllowedAction.Edit && ftpItem.Type != FileType.Directory && ftpItem.Size <=sizeLimit && (perms & UnixPermission.Write) == UnixPermission.Write)
             {
                 var ext = System.IO.Path.GetExtension(ftpItem.Name).ToLower();
-                if (ext == ".txt" || 
+                if (ext == ".txt"  || 
                     ext == ".html" || 
-                    ext == ".htm" || 
-                    ext == ".css" || 
-                    ext == ".js" || 
+                    ext == ".htm"  || 
+                    ext == ".css"  || 
+                    ext == ".js"   || 
                     ext == ".json" || 
-                    ext == ".xml" || 
-                    ext == ".md" || 
-                    ext == ".csv" || 
-                    ext == ".log" || 
-                    ext == ".cfg" || 
-                    ext == ".ini" || 
-                    ext == ".bat" || 
-                    ext == ".sh" || 
-                    ext == ".py" || 
+                    ext == ".xml"  || 
+                    ext == ".md"   || 
+                    ext == ".csv"  || 
+                    ext == ".log"  || 
+                    ext == ".cfg"  || 
+                    ext == ".ini"  || 
+                    ext == ".bat"  || 
+                    ext == ".sh"   || 
+                    ext == ".py"   || 
                     ext == ".java" || 
-                    ext == ".c" || 
-                    ext == ".cpp" || 
+                    ext == ".c"    || 
+                    ext == ".cpp"  || 
                     ext == ".cs")
                 {
                     return true;

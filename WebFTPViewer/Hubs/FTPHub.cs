@@ -24,10 +24,12 @@ namespace WebFTPViewer.Hubs
         public override async Task OnConnectedAsync()
         {
             var settings = new List<Pair>();
-            if (_sharedStorage.TryGetArg("defaultconnection", out string defconn))
-                settings.Add(new() {Name= "defaultconnection", Value = defconn });
-            if (_sharedStorage.TryGetArg("uploadlimit", out string uploadlimit))
-                settings.Add(new() { Name = "uploadlimit", Value = uploadlimit });
+            if (_sharedStorage.TryGetArg("defaultconnection", out string val))
+                settings.Add(new() {Name= "defaultconnection", Value = val });
+            if (_sharedStorage.TryGetArg("uploadlimit", out val))
+                settings.Add(new() { Name = "uploadlimit", Value = val });
+            if (_sharedStorage.TryGetArg("maxfileuploadsize", out val))
+                settings.Add(new() { Name = "maxfileuploadsize", Value = val });
 
             await Clients.Caller.SendAsync("ReceiveInitData",settings);
             await base.OnConnectedAsync();
@@ -67,7 +69,7 @@ namespace WebFTPViewer.Hubs
             await stream.WriteAsync(chunk, 0, chunk.Length);
             await stream.FlushAsync();
 
-            return (stream.Position).ToString(); // next expected offset
+            return (stream.Position).ToString();
         }
 
         public async Task UploadFinish(string name)
@@ -150,38 +152,41 @@ namespace WebFTPViewer.Hubs
                 if (offset != stream.Position)
                     return new(null, $"false | Offset mismatch. Expected {stream.Position}");
 
-                int chunkSize = 64*1024;
-                if (_sharedStorage.TryGetArg("uploadlimit", out string downloadlim) && int.TryParse(downloadlim, out var downlim))
+                // Determine chunk size
+                int chunkSize = 512 * 1024; // default to 512KB
+                if (_sharedStorage.TryGetArg("downloadlimit", out string downloadlim) &&
+                    int.TryParse(downloadlim, out var downlim))
+                {
                     chunkSize = downlim;
+                }
+
                 byte[] buffer = new byte[chunkSize];
+                int totalBytesRead = 0;
 
-                int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-
-                if (bytesRead == 0)
+                // Loop until buffer is full or EOF
+                while (totalBytesRead < buffer.Length)
                 {
-                    try
+                    int bytesRead = await stream.ReadAsync(buffer, totalBytesRead, buffer.Length - totalBytesRead);
+                    if (bytesRead == 0)
                     {
-                        stream.Close();
-                        stream.Dispose();
-
-                        fileStreams.Second.Remove(name);
-                        return new(Array.Empty<byte>(), "true | EOF");
+                        break; // EOF
                     }
-                    catch (Exception e)
-                    {
-                        return new(null,$"false | {e.Message}");
-                    }
+                    totalBytesRead += bytesRead;
                 }
 
-                // Trim buffer if last chunk smaller
-                if (bytesRead < buffer.Length)
+                if (totalBytesRead == 0)
                 {
-                    byte[] trimmed = new byte[bytesRead];
-                    Buffer.BlockCopy(buffer, 0, trimmed, 0, bytesRead);
-                    return new(trimmed, $"true | {bytesRead}");
+                    // End of file reached
+                    stream.Dispose();
+                    fileStreams.Second.Remove(name);
+                    return new(Array.Empty<byte>(), "true | EOF");
                 }
 
-                return new(buffer, $"true | {bytesRead}");
+                byte[] finalBuffer = totalBytesRead < buffer.Length
+                    ? buffer[..totalBytesRead] // slice only the valid portion
+                    : buffer;
+
+                return new(finalBuffer, $"true | {stream.Position}");
             }
             catch (Exception e)
             {
