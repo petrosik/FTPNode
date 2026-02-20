@@ -33,3 +33,7 @@
   - Type: `bool`
   - Default: true
   - Description: Determines if incomplete files should be deleted from the folder when connection or error occurs while uploading
+- **simultaneousupdown**
+  - Type: `bool`
+  - Default: false
+  - Changes if upload and download can run at the same time

@@ -275,18 +275,20 @@ else
 	private Dictionary<string, UploadQueItemDto> UploadQue = new();
 	private Dictionary<string, UploadQueItemDto> DownloadQue = new();
 	private Dictionary<string, string> Settings = new();
-
 	private bool showMenu;
 	private string xpx = "200px";
 	private string ypx = "200px";
 	private string dialogQuestion = "";
 	private Action? dialogAction = null;
 
+	private readonly SemaphoreSlim _upDownSemaphore = new(1, 1);
+
 
 	private async Task HandleFileSelected(InputFileChangeEventArgs e)
 	{
 		isDragging = false;
 		UploadRunning = true;
+		bool lockTaken = false;
 		await PreventClosing(UploadRunning);
 		StateHasChanged();
 		foreach (var file in e.GetMultipleFiles())
@@ -303,8 +305,14 @@ else
 
 			using var stream = file.OpenReadStream(maxFileSize);
 			byte[] buffer = new byte[chunkSize];
-			var qi = new UploadQueItemDto(file.Name, (double)offset / file.Size * 100);
-			if (!UploadQue.TryAdd(file.Name, qi)) continue;
+			if (!UploadQue.TryAdd(file.Name, new UploadQueItemDto(file.Name, (double)offset / file.Size * 100))) continue;
+
+			if (!Settings.TryGetValue("simultaneousupdown", out var simul) || !bool.TryParse(simul, out var siml) || !siml)
+			{
+				await _upDownSemaphore.WaitAsync();
+				lockTaken = true;
+				Console.WriteLine("awaiting upload");
+			}
 
 			while (offset < file.Size)
 			{
@@ -336,6 +344,8 @@ else
 			// Notify server that file is complete
 			await Hub.SendAsync("UploadFinish", file.Name);
 		skip:;
+			if (lockTaken)
+				_upDownSemaphore.Release();	
 		}
 		GetDirectory(null, true);
 		await PreventClosing(false);
@@ -450,8 +460,18 @@ else
 		if (Hub == null || State.Selected == null)
 			return;
 
+		bool lockTaken = false;
 		var filename = State.Selected.Name;
 		var totalSize = State.Selected.Size;
+		DownloadRunning = true;
+		DownloadQue.Add(filename, new(filename, 0));
+		StateHasChanged();
+		if (!Settings.TryGetValue("simultaneousupdown", out var simul) || !bool.TryParse(simul, out var siml) || !siml)
+		{
+			await _upDownSemaphore.WaitAsync();
+			lockTaken = true;
+			Console.WriteLine("awaiting download");
+		}
 		var res = await Hub.InvokeAsync<string>("DownloadStart", filename);
 		var spl = res.Split('|');
 
@@ -463,9 +483,6 @@ else
 		}
 
 		await JS.InvokeVoidAsync("helpers.startFileDownload", filename);
-		DownloadQue.Add(filename, new(filename, 0));
-		DownloadRunning = true;
-		StateHasChanged();
 		await PreventClosing(DownloadRunning);
 		long offset = 0;
 		try
@@ -551,6 +568,8 @@ else
 			await PreventClosing(false);
 			DownloadRunning = false;
 			StateHasChanged();
+			if (lockTaken)
+				_upDownSemaphore.Release();
 		}
 	}
 	private async Task OnRememberChange(ChangeEventArgs e)

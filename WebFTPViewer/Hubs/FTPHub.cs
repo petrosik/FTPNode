@@ -30,6 +30,8 @@ namespace WebFTPViewer.Hubs
                 settings.Add(new() { Name = "uploadlimit", Value = val });
             if (_sharedStorage.TryGetArg("maxfileuploadsize", out val))
                 settings.Add(new() { Name = "maxfileuploadsize", Value = val });
+            if (_sharedStorage.TryGetArg("simultaneousupdown", out val))
+                settings.Add(new() { Name = "simultaneousupdown", Value = val });
 
             await Clients.Caller.SendAsync("ReceiveInitData",settings);
             await base.OnConnectedAsync();
