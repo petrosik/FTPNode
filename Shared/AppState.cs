@@ -6,7 +6,7 @@
         public event Action? ForwardClicked;
         public event Action? LogoutClicked;
         public event Action? UploadClicked;
-        public event Action? DownloadClicked;
+        public event Func<Task>? DownloadClicked;
         public event Action? DeleteClicked;
         public event Action? PermChangeClicked;
         public event Action? EditClicked;
@@ -16,7 +16,11 @@
         public void TriggerForward() => ForwardClicked?.Invoke();
         public void TriggerLogout() => LogoutClicked?.Invoke();
         public void TriggerUpload() => UploadClicked?.Invoke();
-        public void TriggerDownload() => DownloadClicked?.Invoke();
+        public async Task TriggerDownload()
+        {
+            if (DownloadClicked is not null)
+                await DownloadClicked.Invoke();
+        }
         public void TriggerDelete() => DeleteClicked?.Invoke();
         public void TriggerPermChange() => PermChangeClicked?.Invoke();
         public void TriggerEdit() => EditClicked?.Invoke();

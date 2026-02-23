@@ -13,7 +13,7 @@ namespace WebFTPViewer.Hubs
     {
         // Store FTP clients per connection
         // first is upload second is download streams
-        private static readonly ConcurrentDictionary<string, Pair<FtpClient, Pair<Dictionary<string, Stream>, Dictionary<string, Stream>>>> _ftpClients = new();
+        private static readonly ConcurrentDictionary<string, FTPStorage> _ftpClients = new();
         private readonly ISharedStorage _sharedStorage;
 
         public FTPHub(ISharedStorage sharedService)
@@ -25,7 +25,7 @@ namespace WebFTPViewer.Hubs
         {
             var settings = new List<Pair>();
             if (_sharedStorage.TryGetArg("defaultconnection", out string val))
-                settings.Add(new() {Name= "defaultconnection", Value = val });
+                settings.Add(new() { Name = "defaultconnection", Value = val });
             if (_sharedStorage.TryGetArg("uploadlimit", out val))
                 settings.Add(new() { Name = "uploadlimit", Value = val });
             if (_sharedStorage.TryGetArg("maxfileuploadsize", out val))
@@ -33,7 +33,7 @@ namespace WebFTPViewer.Hubs
             if (_sharedStorage.TryGetArg("simultaneousupdown", out val))
                 settings.Add(new() { Name = "simultaneousupdown", Value = val });
 
-            await Clients.Caller.SendAsync("ReceiveInitData",settings);
+            await Clients.Caller.SendAsync("ReceiveInitData", settings);
             await base.OnConnectedAsync();
         }
 
@@ -42,9 +42,8 @@ namespace WebFTPViewer.Hubs
             var clientPair = _ftpClients[Context.ConnectionId];
 
             // Dictionary: name -> IFtpStream
-            var fileStreams = clientPair.Second;
 
-            if (!fileStreams.First.ContainsKey(metadata.Name))
+            if (!clientPair.UploadQue.TryGetValue(metadata.Name, out var strim))
             {
                 if (offset != 0)
                     return "Error: Offset mismatch. Upload not initialized properly.";
@@ -52,8 +51,10 @@ namespace WebFTPViewer.Hubs
                 // Open FTP stream for writing
                 try
                 {
-                    var ftpStream = clientPair.First.OpenWrite(metadata.UploadPath.EndsWith('/') ? metadata.UploadPath + metadata.Name : metadata.UploadPath + "/" + metadata.Name);
-                    fileStreams.First[metadata.Name] = ftpStream;
+                    var ftpClient = SetupCLient(clientPair.LoginJson);
+                    ftpClient.First.SetWorkingDirectory(metadata.UploadPath);
+                    var ftpStreams = ftpClient.First.OpenWrite(metadata.UploadPath.EndsWith('/') ? metadata.UploadPath + metadata.Name : metadata.UploadPath + "/" + metadata.Name);
+                    clientPair.UploadQue[metadata.Name] = new(ftpClient.First, ftpStreams);
                 }
                 catch (Exception e)
                 {
@@ -61,31 +62,30 @@ namespace WebFTPViewer.Hubs
                 }
             }
 
-            var stream = fileStreams.First[metadata.Name];
+            var stream = clientPair.UploadQue[metadata.Name];
 
-            if (offset != stream.Position)
+            if (offset != stream.Second.Position)
             {
-                stream.Position = offset;
+                stream.Second.Position = offset;
             }
 
-            await stream.WriteAsync(chunk, 0, chunk.Length);
-            await stream.FlushAsync();
+            await stream.Second.WriteAsync(chunk, 0, chunk.Length);
+            await stream.Second.FlushAsync();
 
-            return (stream.Position).ToString();
+            return (stream.Second.Position).ToString();
         }
 
         public async Task UploadFinish(string name)
         {
             var clientPair = _ftpClients[Context.ConnectionId];
-            var fileStreams = clientPair.Second;
 
-            if (!fileStreams.First.TryGetValue(name, out var stream))
+            if (!clientPair.UploadQue.TryGetValue(name, out var stream))
                 return;
-            await stream.FlushAsync();
-            stream.Close();
+            await stream.Second.FlushAsync();
+            stream.Second.Close();
 
-            clientPair.First.GetReply();
-            fileStreams.First.Remove(name);
+            stream.First.GetReply();
+            clientPair.UploadQue.Remove(name);
         }
         public async Task UploadCancel(string name, bool autoDelete)
         {
@@ -94,18 +94,17 @@ namespace WebFTPViewer.Hubs
                 Console.WriteLine("Upload Cancel | Error ftpClients don't contain connection ID");
                 return;
             }
-            var fileStreams = clientPair.Second;
 
-            if (!fileStreams.First.TryGetValue(name, out var stream))
+            if (!clientPair.UploadQue.TryGetValue(name, out var stream))
                 return;
 
             try
             {
-                stream.Close();
-                stream.Dispose();
+                stream.Second.Close();
+                stream.Second.Dispose();
                 if (autoDelete)
                 {
-                    clientPair.First.DeleteFile(name);
+                    stream.First.DeleteFile(name);
                 }
             }
             catch (Exception e)
@@ -115,23 +114,26 @@ namespace WebFTPViewer.Hubs
             }
             finally
             {
-                fileStreams.First.Remove(name);
+                clientPair.UploadQue.Remove(name);
             }
         }
-        public async Task<string> DownloadStart(string filename)
+        public async Task<string> DownloadStart(string filename, string path)
         {
             if (!_ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
                 return "false | Error: FTP client not found.";
 
-            var fileStreams = clientPair.Second;
-
-            if (fileStreams.Second.ContainsKey(filename))
+            if (clientPair.DownloadQue.ContainsKey(filename))
                 return "false | Error: Download already started.";
 
             try
             {
-                var ftpStream = clientPair.First.OpenRead(filename);
-                fileStreams.Second[filename] = ftpStream;
+                var ftpClient = SetupCLient(clientPair.LoginJson);
+                if (ftpClient.First == null)
+                {
+                    return ftpClient.Second;
+                }
+                ftpClient.First.SetWorkingDirectory(path);
+                clientPair.DownloadQue[filename] = new(ftpClient.First, ftpClient.First.OpenRead(filename));
                 return "true";
             }
             catch (Exception e)
@@ -144,15 +146,13 @@ namespace WebFTPViewer.Hubs
             if (!_ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
                 return new(null, "false | FTP client not found");
 
-            var fileStreams = clientPair.Second;
-
-            if (!fileStreams.Second.TryGetValue(name, out var stream))
+            if (!clientPair.DownloadQue.TryGetValue(name, out var stream))
                 return new(null, "false | Download not started");
 
             try
             {
-                if (offset != stream.Position)
-                    return new(null, $"false | Offset mismatch. Expected {stream.Position}");
+                if (offset != stream.Second.Position)
+                    return new(null, $"false | Offset mismatch. Expected {stream.Second.Position}");
 
                 // Determine chunk size
                 int chunkSize = 512 * 1024; // default to 512KB
@@ -168,7 +168,7 @@ namespace WebFTPViewer.Hubs
                 // Loop until buffer is full or EOF
                 while (totalBytesRead < buffer.Length)
                 {
-                    int bytesRead = await stream.ReadAsync(buffer, totalBytesRead, buffer.Length - totalBytesRead);
+                    int bytesRead = await stream.Second.ReadAsync(buffer, totalBytesRead, buffer.Length - totalBytesRead);
                     if (bytesRead == 0)
                     {
                         break; // EOF
@@ -179,8 +179,8 @@ namespace WebFTPViewer.Hubs
                 if (totalBytesRead == 0)
                 {
                     // End of file reached
-                    stream.Dispose();
-                    fileStreams.Second.Remove(name);
+                    stream.Second.Dispose();
+                    clientPair.DownloadQue.Remove(name);
                     return new(Array.Empty<byte>(), "true | EOF");
                 }
 
@@ -188,7 +188,7 @@ namespace WebFTPViewer.Hubs
                     ? buffer[..totalBytesRead] // slice only the valid portion
                     : buffer;
 
-                return new(finalBuffer, $"true | {stream.Position}");
+                return new(finalBuffer, $"true | {stream.Second.Position}");
             }
             catch (Exception e)
             {
@@ -200,15 +200,13 @@ namespace WebFTPViewer.Hubs
             if (!_ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
                 return "false | Error: FTP client not found.";
 
-            var fileStreams = clientPair.Second;
-
-            if (!fileStreams.Second.TryGetValue(name, out var stream))
+            if (!clientPair.DownloadQue.TryGetValue(name, out var stream))
                 return "false | Error: Stream not found.";
 
             try
             {
-                stream.Close();
-                stream.Dispose();
+                stream.Second.Close();
+                stream.Second.Dispose();
             }
             catch (Exception e)
             {
@@ -216,7 +214,7 @@ namespace WebFTPViewer.Hubs
             }
             finally
             {
-                fileStreams.Second.Remove(name);
+                clientPair.DownloadQue.Remove(name);
             }
 
             return "true";
@@ -226,17 +224,17 @@ namespace WebFTPViewer.Hubs
         {
             if (_ftpClients.TryRemove(Context.ConnectionId, out var ftpClient))
             {
-                if (ftpClient.Second.First.Count != 0)
+                if (ftpClient.UploadQue.Count != 0)
                 {
-                    foreach (var item in ftpClient.Second.First)
+                    foreach (var item in ftpClient.UploadQue)
                     {
                         try
                         {
-                            item.Value.Close();
-                            item.Value.Dispose();
+                            item.Value.Second.Close();
+                            item.Value.Second.Dispose();
                             if (!_sharedStorage.TryGetArg<bool>("autodelete", out var v) || v)
                             {
-                                ftpClient.First.DeleteFile(item.Key);
+                                item.Value.First.DeleteFile(item.Key);
                             }
                         }
                         catch (Exception e)
@@ -245,16 +243,16 @@ namespace WebFTPViewer.Hubs
                         }
                     }
                 }
-                if (ftpClient.Second.Second.Count != 0)
+                if (ftpClient.DownloadQue.Count != 0)
                 {
-                    foreach (var item in ftpClient.Second.Second)
+                    foreach (var item in ftpClient.DownloadQue)
                     {
-                        item.Value.Close();
-                        item.Value.Dispose();
+                        item.Value.Second.Close();
+                        item.Value.Second.Dispose();
                     }
                 }
-                ftpClient.First.Disconnect();
-                ftpClient.First.Dispose();
+                ftpClient.MainClient.Disconnect();
+                ftpClient.MainClient.Dispose();
             }
             await base.OnDisconnectedAsync(exception);
         }
@@ -262,19 +260,12 @@ namespace WebFTPViewer.Hubs
         {
             try
             {
-                // Create and connect FTP client when SignalR client connects
-                var ftpClient = new FtpClient(info.Host, new NetworkCredential(info.Username, info.Password), info.Port)
+                var ftpClient = SetupCLient(info);
+                if (ftpClient.First == null)
                 {
-                    Config = new FtpConfig
-                    {
-                        EncryptionMode = FtpEncryptionMode.Auto,
-                        ValidateAnyCertificate = true,//change to frontend ask
-                    }
-                };
-
-                ftpClient.Connect();
-
-                _ftpClients[Context.ConnectionId] = new(ftpClient, new(new(), new()));
+                    return ftpClient.Second;
+                }
+                _ftpClients[Context.ConnectionId] = new() { MainClient = ftpClient.First, LoginJson=info };
                 return true.ToString();
             }
             catch (Exception ex)
@@ -286,8 +277,8 @@ namespace WebFTPViewer.Hubs
         public async Task<string> GetCurrentDirectory()
         {
             if (!_ftpClients.ContainsKey(Context.ConnectionId)) return null;
-            var wd = _ftpClients[Context.ConnectionId].First.GetWorkingDirectory();
-            FtpListItem[] items = _ftpClients[Context.ConnectionId].First.GetListing(
+            var wd = _ftpClients[Context.ConnectionId].MainClient.GetWorkingDirectory();
+            FtpListItem[] items = _ftpClients[Context.ConnectionId].MainClient.GetListing(
                     wd,
                     FtpListOption.Modify |
                     FtpListOption.Size |
@@ -304,9 +295,9 @@ namespace WebFTPViewer.Hubs
         public async Task<bool> Goto(string targetPath)
         {
             if (!_ftpClients.ContainsKey(Context.ConnectionId)) return false;
-            if (_ftpClients[Context.ConnectionId].First.DirectoryExists(targetPath))
+            if (_ftpClients[Context.ConnectionId].MainClient.DirectoryExists(targetPath))
             {
-                _ftpClients[Context.ConnectionId].First.SetWorkingDirectory(targetPath);
+                _ftpClients[Context.ConnectionId].MainClient.SetWorkingDirectory(targetPath);
                 return true;
             }
             else
@@ -317,14 +308,14 @@ namespace WebFTPViewer.Hubs
         public async Task<string> Delete(string target)
         {
             if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
-            if (_ftpClients[Context.ConnectionId].First.FileExists(target))
+            if (_ftpClients[Context.ConnectionId].MainClient.FileExists(target))
             {
-                _ftpClients[Context.ConnectionId].First.DeleteFile(target);
+                _ftpClients[Context.ConnectionId].MainClient.DeleteFile(target);
                 return "true";
             }
-            else if (_ftpClients[Context.ConnectionId].First.DirectoryExists(target))
+            else if (_ftpClients[Context.ConnectionId].MainClient.DirectoryExists(target))
             {
-                _ftpClients[Context.ConnectionId].First.DeleteDirectory(target);
+                _ftpClients[Context.ConnectionId].MainClient.DeleteDirectory(target);
                 return "true";
             }
             else
@@ -332,5 +323,28 @@ namespace WebFTPViewer.Hubs
                 return "false | Error file or directory could not be found";
             }
         }
+        private static Pair<FtpClient,string> SetupCLient(LoginJson info)
+        {
+            try
+            {
+                // Create and connect FTP client when SignalR client connects
+                var ftpClient = new FtpClient(info.Host, new NetworkCredential(info.Username, info.Password), info.Port)
+                {
+                    Config = new FtpConfig
+                    {
+                        EncryptionMode = FtpEncryptionMode.Auto,
+                        ValidateAnyCertificate = true,//change to frontend ask
+                    }
+                };
+
+                ftpClient.Connect();
+                return new(ftpClient,null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing FTP client: {ex.Message}");
+                return new(null, $"{ex.Message} | {ex.StackTrace}");
+            }
+        } 
     }
 }

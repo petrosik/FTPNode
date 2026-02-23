@@ -288,64 +288,74 @@ else
 	{
 		isDragging = false;
 		UploadRunning = true;
-		bool lockTaken = false;
 		await PreventClosing(UploadRunning);
 		StateHasChanged();
 		foreach (var file in e.GetMultipleFiles())
 		{
 			//Console.WriteLine($"{file.Name} ({file.Size} bytes)");
-			var chunkSize = 64 * 1024; // 64 KB chunks
-			if (Settings.TryGetValue("uploadlimit", out var lim) && int.TryParse(lim, out var limit))
-				chunkSize = limit;
-
-			long offset = 0;
-			var maxFileSize = 1024L * 1024 * 1024 * 500; // 500GB
-			if (Settings.TryGetValue("maxfileuploadsize", out var max) && long.TryParse(max, out var maxLim))
-				maxFileSize = maxLim;
-
-			using var stream = file.OpenReadStream(maxFileSize);
-			byte[] buffer = new byte[chunkSize];
-			if (!UploadQue.TryAdd(file.Name, new UploadQueItemDto(file.Name, (double)offset / file.Size * 100))) continue;
-
-			if (!Settings.TryGetValue("simultaneousupdown", out var simul) || !bool.TryParse(simul, out var siml) || !siml)
+			bool lockTaken = false;
+			try
 			{
-				await _upDownSemaphore.WaitAsync();
-				lockTaken = true;
-				Console.WriteLine("awaiting upload");
-			}
+				if (UploadQue.TryGetValue(file.Name, out var queueItem) && queueItem.Proggress == 100)
+				{
+					UploadQue.Remove(file.Name);
+				}
 
-			while (offset < file.Size)
+				var chunkSize = 64 * 1024; // 64 KB chunks
+				if (Settings.TryGetValue("uploadlimit", out var lim) && int.TryParse(lim, out var limit))
+					chunkSize = limit;
+
+				long offset = 0;
+				var maxFileSize = 1024L * 1024 * 1024 * 500; // 500GB
+				if (Settings.TryGetValue("maxfileuploadsize", out var max) && long.TryParse(max, out var maxLim))
+					maxFileSize = maxLim;
+
+				using var stream = file.OpenReadStream(maxFileSize);
+				byte[] buffer = new byte[chunkSize];
+				if (!UploadQue.TryAdd(file.Name, new UploadQueItemDto(file.Name, (double)offset / file.Size * 100))) continue;
+
+				if (!Settings.TryGetValue("simultaneousupdown", out var simul) || !bool.TryParse(simul, out var siml) || !siml)
+				{
+					await _upDownSemaphore.WaitAsync();
+					lockTaken = true;
+				}
+
+				while (offset < file.Size)
+				{
+					if (!UploadQue.TryGetValue(file.Name, out queueItem))
+					{
+						await Hub.InvokeAsync("UploadCancel", file.Name, true);
+						goto skip;
+					}
+					int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+					if (bytesRead == 0) break;
+
+					// Trim buffer for last chunk
+					byte[] chunk = bytesRead == buffer.Length ? buffer : buffer[..bytesRead];
+
+					// Send chunk to SignalR hub
+					var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.Value.Key }, chunk, offset);
+
+					offset += bytesRead;
+					if (!long.TryParse(next, out var nexz) || offset != nexz)
+					{
+						queueItem.Problem = next;
+						Error = next;
+						goto skip;
+					}
+					queueItem.Proggress = (double)offset / file.Size * 100;
+					StateHasChanged();
+				}
+
+				// Notify server that file is complete
+				await Hub.SendAsync("UploadFinish", file.Name);
+			skip:;
+			}
+			finally
 			{
-				if (!UploadQue.TryGetValue(file.Name, out var queueItem))
-				{
-					await Hub.InvokeAsync("UploadCancel", file.Name, true);
-					goto skip;
-				}
-				int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-				if (bytesRead == 0) break;
-
-				// Trim buffer for last chunk
-				byte[] chunk = bytesRead == buffer.Length ? buffer : buffer[..bytesRead];
-
-				// Send chunk to SignalR hub
-				var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.Value.Key }, chunk, offset);
-
-				offset += bytesRead;
-				if (!long.TryParse(next, out var nexz) || offset != nexz)
-				{
-					queueItem.Problem = next;
-					Error = next;
-					goto skip;
-				}
-				queueItem.Proggress = (double)offset / file.Size * 100;
-				StateHasChanged();
+				if (lockTaken)
+					_upDownSemaphore.Release();
 			}
-
-			// Notify server that file is complete
-			await Hub.SendAsync("UploadFinish", file.Name);
-		skip:;
-			if (lockTaken)
-				_upDownSemaphore.Release();	
 		}
 		GetDirectory(null, true);
 		await PreventClosing(false);
@@ -455,7 +465,7 @@ else
 	{
 		await JS.InvokeVoidAsync("helpers.openFileDialog", "fileInput");
 	}
-	private async void Download()
+	private async Task Download()
 	{
 		if (Hub == null || State.Selected == null)
 			return;
@@ -470,9 +480,8 @@ else
 		{
 			await _upDownSemaphore.WaitAsync();
 			lockTaken = true;
-			Console.WriteLine("awaiting download");
 		}
-		var res = await Hub.InvokeAsync<string>("DownloadStart", filename);
+		var res = await Hub.InvokeAsync<string>("DownloadStart", filename, CurrentDir.Value.Key);
 		var spl = res.Split('|');
 
 		if (!bool.TryParse(spl[0].Trim(), out var canDownload) || !canDownload)
