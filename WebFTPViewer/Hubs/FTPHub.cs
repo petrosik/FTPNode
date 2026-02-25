@@ -24,8 +24,12 @@ namespace WebFTPViewer.Hubs
         public override async Task OnConnectedAsync()
         {
             var settings = new List<Pair>();
-            if (_sharedStorage.TryGetArg("defaultconnection", out string val))
-                settings.Add(new() { Name = "defaultconnection", Value = val });
+            if (_sharedStorage.TryGetArg("host", out string val))
+                settings.Add(new() { Name = "host", Value = val });
+            if (_sharedStorage.TryGetArg("port", out val))
+                settings.Add(new() { Name = "port", Value = val });
+            if (_sharedStorage.TryGetArg("passivemode", out val))
+                settings.Add(new() { Name = "passivemode", Value = val });
             if (_sharedStorage.TryGetArg("uploadlimit", out val))
                 settings.Add(new() { Name = "uploadlimit", Value = val });
             if (_sharedStorage.TryGetArg("maxfileuploadsize", out val))
@@ -155,7 +159,7 @@ namespace WebFTPViewer.Hubs
                     return new(null, $"false | Offset mismatch. Expected {stream.Second.Position}");
 
                 // Determine chunk size
-                int chunkSize = 512 * 1024; // default to 512KB
+                int chunkSize = 128 * 1024; // default to 128KB
                 if (_sharedStorage.TryGetArg("downloadlimit", out string downloadlim) &&
                     int.TryParse(downloadlim, out var downlim))
                 {

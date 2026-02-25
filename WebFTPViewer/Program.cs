@@ -36,7 +36,14 @@ namespace WebFTPViewer
                         .SetIsOriginAllowed(_ => true); // allow all origins (for dev)
                 });
             });
+            var env = builder.Environment.EnvironmentName;
+            builder.Configuration
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+                .AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: false)
+                .AddJsonFile("/config/appsettings.json", optional: true, reloadOnChange: false)
+                .AddEnvironmentVariables();
 
+            var ftpsettings = builder.Configuration.GetSection("FTP");
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -66,15 +73,12 @@ namespace WebFTPViewer
             app.MapControllers();
 
             var sharedService = app.Services.GetRequiredService<ISharedStorage>();
-            foreach (var item in args)
+            if (ftpsettings != null)
             {
-                var it = item;
-                if (item.StartsWith('-'))
+                foreach (var item in ftpsettings.GetChildren())
                 {
-                    it.TrimStart('-');
+                    sharedService.SetArg(item.Key.ToLower(), item.Value.ToString());
                 }
-                var splits = it.Split(':');
-                sharedService.SetArg(splits[0].ToLower(), splits.Count() > 1 ? splits[1] : null);
             }
             app.Run();
         }

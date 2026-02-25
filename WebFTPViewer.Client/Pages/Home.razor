@@ -1,6 +1,5 @@
 ﻿@using System.Net
 @using Shared
-@using Petrosik.Http
 @using Microsoft.AspNetCore.SignalR.Client;
 @using Microsoft.Extensions.Configuration;
 @using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -22,14 +21,14 @@
 			{
 				<form @onsubmit="OnLogin" style="display:flex;flex-direction:column; align-items:center; gap:2vh; height:auto; margin:2%">
 					<div style="display:grid; grid-template-columns:10fr 90fr; align-items:center; gap:1%;">
-						@if (!Settings.ContainsKey("defaultconnection_host"))
+						@if (!Settings.ContainsKey("host"))
 						{
 							<p style="margin:0">
 								Host:
 							</p>
 							<InputText @bind-value=LoginStuff.Host placeholder="10.0.0.0 or example.com" />
 						}
-						@if (!Settings.ContainsKey("defaultconnection_port"))
+						@if (!Settings.ContainsKey("port"))
 						{
 							<p style="margin:0">
 								Port:
@@ -51,7 +50,7 @@
 								Remember Me:
 								<InputCheckbox @bind-Value=RememberMe.RememberMe @oninput=OnRememberChange />
 							</label>
-							@if (!Settings.ContainsKey("defaultconnection_passivemode"))
+							@if (!Settings.ContainsKey("passivemode"))
 							{
 								<label>
 									Passive Mode:
@@ -751,14 +750,6 @@ else
 		Hub.On<List<Pair>>("ReceiveInitData", async data =>
 			{
 				Settings = data.ToDictionary(y => y.Name, x => x.Value);
-				Settings.TryGetValue("defaultconnection", out var host);
-				var sp = host.Split('|');
-				Settings.Add("defaultconnection_host", sp[0]);
-				if (sp.Length > 1)
-					Settings.Add("defaultconnection_port", sp[1]);
-				if (sp.Length > 2)
-					Settings.Add("defaultconnection_passivemode", sp[2]);
-				Settings.Remove("defaultconnection");
 				StateHasChanged();
 
 				//try reconnect with current settings if exist
