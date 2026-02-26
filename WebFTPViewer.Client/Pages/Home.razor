@@ -249,6 +249,12 @@ else
 				Download
 			</button>
 		}
+		@if (Utils.AllowedActions(State.Selected, AllowedAction.Rename))
+		{
+			<button class="button-context" @onclick="Rename">
+				Rename
+			</button>
+		}
 	</div>
 }
 @code
@@ -279,6 +285,7 @@ else
 	private string ypx = "200px";
 	private string dialogQuestion = "";
 	private Action? dialogAction = null;
+	private bool Renaming = false;
 
 	private readonly SemaphoreSlim _upDownSemaphore = new(1, 1);
 
@@ -459,6 +466,15 @@ else
 		dragEventsRegistered = false;
 		await OnAfterRenderAsync(true);
 		StateHasChanged();
+	}
+	private async Task Rename()
+	{
+		if (Hub == null || State.Selected == null)
+			return;
+
+
+		Renaming = true;
+
 	}
 	private async void Upload()
 	{
@@ -777,6 +793,7 @@ else
 		State.UploadClicked += Upload;
 		State.DeleteClicked += Delete;
 		State.DownloadClicked += Download;
+		State.RenameClicked += Rename;
 		base.OnInitialized();
 	}
 	public void Dispose()
@@ -787,7 +804,7 @@ else
 		State.UploadClicked -= Upload;
 		State.DeleteClicked -= Delete;
 		State.DownloadClicked -= Download;
-
+		State.RenameClicked -= Rename;
 		ClearHubConn();
 	}
 }

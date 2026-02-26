@@ -42,6 +42,12 @@
 							<i style="font-size:2rem" class="fa-solid fa-download"></i>
 						</button>
 					}
+					@if (Utils.AllowedActions(State.Selected, AllowedAction.Rename))
+					{
+						<button class="control-button" title="Rename" @onclick="State.TriggerRename">
+							<i style="font-size:2rem" class="fa-solid fa-i"></i>
+						</button>
+					}
 				</div>
 			}
 			<button class="control-button" @onclick="State.TriggerUpload" title="Upload File"><i style="font-size:2rem" class="fa-solid fa-file-arrow-up"></i></button>

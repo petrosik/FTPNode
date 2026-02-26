@@ -269,7 +269,7 @@ namespace WebFTPViewer.Hubs
                 {
                     return ftpClient.Second;
                 }
-                _ftpClients[Context.ConnectionId] = new() { MainClient = ftpClient.First, LoginJson=info };
+                _ftpClients[Context.ConnectionId] = new() { MainClient = ftpClient.First, LoginJson = info };
                 return true.ToString();
             }
             catch (Exception ex)
@@ -327,7 +327,27 @@ namespace WebFTPViewer.Hubs
                 return "false | Error file or directory could not be found";
             }
         }
-        private static Pair<FtpClient,string> SetupCLient(LoginJson info)
+        public async Task<string> Rename(string from, string dest)
+        {
+            try
+            {
+                if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+                if (_ftpClients[Context.ConnectionId].MainClient.FileExists(from))
+                {
+                    _ftpClients[Context.ConnectionId].MainClient.Rename(from, dest);
+                    return "true";
+                }
+                else
+                {
+                    return "false | Error file or directory could not be found";
+                }
+            }
+            catch (Exception e)
+            {
+                return $"false | {e.Message} | {e.StackTrace}";
+            }
+        }
+        private static Pair<FtpClient, string> SetupCLient(LoginJson info)
         {
             try
             {
@@ -342,13 +362,13 @@ namespace WebFTPViewer.Hubs
                 };
 
                 ftpClient.Connect();
-                return new(ftpClient,null);
+                return new(ftpClient, null);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error initializing FTP client: {ex.Message}");
                 return new(null, $"{ex.Message} | {ex.StackTrace}");
             }
-        } 
+        }
     }
 }
