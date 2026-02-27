@@ -32,7 +32,6 @@ window.helpers.registerDragEvents = (container, dotnet) => {
         dragCounter = 0;
         dotnet.invokeMethodAsync("HideOverlay");
 
-        // optionally forward to InputFile here
         const inputEl = document.getElementById("fileInput");
         if (!inputEl) return;
 
@@ -57,10 +56,6 @@ window.helpers.startFileDownload = (fileName) => {
     window._fileBuffers[fileName] = [];
 };
 
-//window.helpers.writeFileChunk = (fileName, base64Chunk) => {
-//    const uint8Array = Uint8Array.from(atob(base64Chunk), c => c.charCodeAt(0));
-//    window._fileBuffers[fileName].push(uint8Array);
-//};
 window.helpers.writeFileChunk = async (fileName, dotnetStreamRef) => {
     const readableStream = await dotnetStreamRef.stream();
     const reader = readableStream.getReader();

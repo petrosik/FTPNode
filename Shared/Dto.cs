@@ -71,4 +71,34 @@ namespace Shared
             Second = second;
         }
     }
+
+    public class CertificateDto
+    {
+        // Basic fields
+        public string Subject { get; set; }               // "Issued To"
+        public string Issuer { get; set; }                // "Issued By"
+        public string Thumbprint { get; set; }
+        public string SerialNumber { get; set; }
+        public DateTime NotBefore { get; set; }          // Valid from
+        public DateTime NotAfter { get; set; }           // Valid to
+        public string SignatureAlgorithm { get; set; }
+        public string PublicKeyAlgorithm { get; set; }
+        public int PublicKeyLength { get; set; }         // e.g., 2048
+
+        // Extensions (key usages, SANs, basic constraints, etc.)
+        public List<Pair<string,string>> Extensions { get; set; } = new();
+
+        // Chain elements (intermediate and root certificates)
+        public List<CertificateChainElementDto> Chain { get; set; } = new();
+
+        // Optional: raw base64 if you want to allow download/export
+        public string RawDataBase64 { get; set; }
+    }
+
+    public class CertificateChainElementDto
+    {
+        public string Subject { get; set; }
+        public string Issuer { get; set; }
+        public string Thumbprint { get; set; }
+    }
 }

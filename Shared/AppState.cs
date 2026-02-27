@@ -10,7 +10,7 @@
         public event Action? DeleteClicked;
         public event Action? PermChangeClicked;
         public event Action? EditClicked;
-        public event Action? ViewClicked;
+        public event Func<Task>? ViewClicked;
         public event Func<Task>? RenameClicked;
 
         public void TriggerBack() => BackClicked?.Invoke();
@@ -25,11 +25,20 @@
         public void TriggerDelete() => DeleteClicked?.Invoke();
         public void TriggerPermChange() => PermChangeClicked?.Invoke();
         public void TriggerEdit() => EditClicked?.Invoke();
-        public void TriggerView() => ViewClicked?.Invoke();
+        public async Task TriggerView()
+        {
+            if (ViewClicked is not null)
+            {
+                await ViewClicked.Invoke();
+            }
+        }
         public async Task TriggerRename()
         {
             if (RenameClicked is not null)
+            {
                 await RenameClicked.Invoke();
+                NotifyStateChanged();
+            }
         }
 
         private FtpItemDto? _Selected = null;

@@ -103,3 +103,8 @@ Example:
   - Type: `bool`
   - Default: false
   - Description: Changes if upload and download can run at the same time
+
+- **validateanycertificate**
+  - Type: `bool`
+  - Default: false
+  - Description: When true automaticly accepts any ftp connection certificate, otherwise asks user

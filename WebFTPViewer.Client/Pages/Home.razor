@@ -194,7 +194,14 @@
 					<i class="@v" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
 				}
 				<button class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 30fr 30fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault>
-					<p style="font-weight:bold; margin-bottom:0; text-align:left; overflow-x:hidden; text-overflow:ellipsis;" title="@item.Name">@item.Name</p>
+					@if (Renaming && State.Selected != null && State.Selected.Equals(item))
+					{
+						<input @ref="renameInput" @bind="NewName" @bind:event="oninput" @onclick:stopPropagation="true" @onmousedown:stopPropagation="true" @onblur="() => { if (Renaming) SaveRename();}" @onkeydown="HandleKeyDownRename" style="margin-right:10%;" />
+					}
+					else
+					{
+						<p style="font-weight:bold; margin-bottom:0; text-align:left; overflow-x:hidden; text-overflow:ellipsis;" title="@item.Name">@item.Name</p>
+					}
 					<p style="font-weight:bold; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color: #707070" : "")" title="@(item.Type == FileType.Directory ? "Not the size of the content" : "")">@item.Size.ToClosestSize()</p>
 					<p style="font-weight:bold; margin-bottom:0; text-align:left;">@Utils.GetUnixPermissions(item.Permissions)</p>
 				</button>
@@ -239,7 +246,7 @@ else
 		}
 		@if (Utils.AllowedActions(State.Selected, AllowedAction.Edit) && Utils.AllowedActions(State.Selected, AllowedAction.Read))
 		{
-			<button class="button-context">
+			<button class="button-context" @onclick="View">
 				View
 			</button>
 		}
@@ -286,6 +293,10 @@ else
 	private string dialogQuestion = "";
 	private Action? dialogAction = null;
 	private bool Renaming = false;
+	private string NewName = "";
+	private ElementReference renameInput;
+	private bool shouldFocus;
+	private bool _renameClosing;
 
 	private readonly SemaphoreSlim _upDownSemaphore = new(1, 1);
 
@@ -326,31 +337,44 @@ else
 					lockTaken = true;
 				}
 
-				while (offset < file.Size)
+				if (file.Size == 0)
 				{
 					if (!UploadQue.TryGetValue(file.Name, out queueItem))
 					{
 						await Hub.InvokeAsync("UploadCancel", file.Name, true);
 						goto skip;
 					}
-					int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-					if (bytesRead == 0) break;
-
-					// Trim buffer for last chunk
-					byte[] chunk = bytesRead == buffer.Length ? buffer : buffer[..bytesRead];
-
-					// Send chunk to SignalR hub
-					var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.Value.Key }, chunk, offset);
-
-					offset += bytesRead;
-					if (!long.TryParse(next, out var nexz) || offset != nexz)
+					var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.Value.Key }, new byte[0], offset);
+					queueItem.Proggress = 100;
+				}
+				else
+				{
+					while (offset < file.Size)
 					{
-						queueItem.Problem = next;
-						Error = next;
-						goto skip;
+						if (!UploadQue.TryGetValue(file.Name, out queueItem))
+						{
+							await Hub.InvokeAsync("UploadCancel", file.Name, true);
+							goto skip;
+						}
+						int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+						if (bytesRead == 0) break;
+
+						// Trim buffer for last chunk
+						byte[] chunk = bytesRead == buffer.Length ? buffer : buffer[..bytesRead];
+
+						// Send chunk to SignalR hub
+						var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.Value.Key }, chunk, offset);
+
+						offset += bytesRead;
+						if (!long.TryParse(next, out var nexz) || offset != nexz)
+						{
+							queueItem.Problem = next;
+							Error = next;
+							goto skip;
+						}
+						queueItem.Proggress = (double)offset / file.Size * 100;
+						StateHasChanged();
 					}
-					queueItem.Proggress = (double)offset / file.Size * 100;
-					StateHasChanged();
 				}
 
 				// Notify server that file is complete
@@ -412,11 +436,11 @@ else
 		await StartHubConn();
 		if (Hub.State == HubConnectionState.Connected)
 		{
-			if (Settings.TryGetValue("defaultconnection_host", out var host))
+			if (Settings.TryGetValue("host", out var host))
 				LoginStuff.Host = host;
-			if (Settings.TryGetValue("defaultconnection_port", out var port) && int.TryParse(port, out var pp))
+			if (Settings.TryGetValue("port", out var port) && int.TryParse(port, out var pp))
 				LoginStuff.Port = pp;
-			if (Settings.TryGetValue("defaultconnection_passivemode", out var pass) && bool.TryParse(pass, out var pas))
+			if (Settings.TryGetValue("passivemode", out var pass) && bool.TryParse(pass, out var pas))
 				LoginStuff.PassiveMode = pas;
 
 			var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
@@ -469,11 +493,47 @@ else
 	}
 	private async Task Rename()
 	{
-		if (Hub == null || State.Selected == null)
+		if (!HubGood())
 			return;
 
-
 		Renaming = true;
+		showMenu = false;
+		shouldFocus = true;
+	}
+	private async Task SaveRename()
+	{
+		if (!HubGood())
+			return;
+
+		var res = await Hub.InvokeAsync<string>("Rename", State.Selected.Name, NewName);
+		var spl = res.Split('|');
+		if (bool.TryParse(spl[0] , out var val) && val)
+		{
+			Renaming = false;
+			NewName = "";
+			GetDirectory(null, true);
+		}
+		else if (spl.Length > 1)
+		{
+			Error = spl[1];
+			StateHasChanged();
+		}
+	}
+	private async Task HandleKeyDownRename(KeyboardEventArgs e)
+	{
+		if (e.Key == "Enter")
+			await SaveRename();
+
+		if (e.Key == "Escape")
+		{
+			Renaming = false;
+			NewName = "";
+		}
+	}
+	private async Task View()
+	{
+		if (!HubGood())
+			return;
 
 	}
 	private async void Upload()
@@ -482,7 +542,7 @@ else
 	}
 	private async Task Download()
 	{
-		if (Hub == null || State.Selected == null)
+		if (!HubGood())
 			return;
 
 		bool lockTaken = false;
@@ -639,6 +699,11 @@ else
 				dotnetRef
 			);
 		}
+		if (shouldFocus)
+		{
+			shouldFocus = false;
+			await renameInput.FocusAsync();
+		}
 		await base.OnAfterRenderAsync(firstRender);
 	}
 	private async void Delete()
@@ -784,6 +849,17 @@ else
 					}
 				}
 			});
+		Hub.On<CertificateDto>("CertConfirm", async data =>
+		{
+			Console.WriteLine(data.Issuer);
+		});
+	}
+	private bool HubGood()
+	{
+		if (Hub == null || State.Selected == null)
+			return false;
+
+		return true;
 	}
 	protected override void OnInitialized()
 	{
@@ -794,6 +870,8 @@ else
 		State.DeleteClicked += Delete;
 		State.DownloadClicked += Download;
 		State.RenameClicked += Rename;
+		State.ViewClicked += View;
+		State.OnChange += HandleStateChange;
 		base.OnInitialized();
 	}
 	public void Dispose()
@@ -805,6 +883,12 @@ else
 		State.DeleteClicked -= Delete;
 		State.DownloadClicked -= Download;
 		State.RenameClicked -= Rename;
+		State.ViewClicked -= View;
+		State.OnChange -= HandleStateChange;
 		ClearHubConn();
+	}
+	private async void HandleStateChange()
+	{
+		await InvokeAsync(StateHasChanged);
 	}
 }

@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.SignalR;
 using Shared;
 using System.Collections.Concurrent;
 using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
-using System.Xml.Linq;
 using WebFTPViewer.Services;
 
 namespace WebFTPViewer.Hubs
@@ -55,7 +55,7 @@ namespace WebFTPViewer.Hubs
                 // Open FTP stream for writing
                 try
                 {
-                    var ftpClient = SetupCLient(clientPair.LoginJson);
+                    var ftpClient = SetupClient(clientPair.LoginJson);
                     ftpClient.First.SetWorkingDirectory(metadata.UploadPath);
                     var ftpStreams = ftpClient.First.OpenWrite(metadata.UploadPath.EndsWith('/') ? metadata.UploadPath + metadata.Name : metadata.UploadPath + "/" + metadata.Name);
                     clientPair.UploadQue[metadata.Name] = new(ftpClient.First, ftpStreams);
@@ -131,7 +131,7 @@ namespace WebFTPViewer.Hubs
 
             try
             {
-                var ftpClient = SetupCLient(clientPair.LoginJson);
+                var ftpClient = SetupClient(clientPair.LoginJson);
                 if (ftpClient.First == null)
                 {
                     return ftpClient.Second;
@@ -236,7 +236,7 @@ namespace WebFTPViewer.Hubs
                         {
                             item.Value.Second.Close();
                             item.Value.Second.Dispose();
-                            if (!_sharedStorage.TryGetArg<bool>("autodelete", out var v) || v)
+                            if (!_sharedStorage.TryGetArg<string>("autodelete", out var v) || !bool.TryParse(v, out var val) || val)
                             {
                                 item.Value.First.DeleteFile(item.Key);
                             }
@@ -264,7 +264,7 @@ namespace WebFTPViewer.Hubs
         {
             try
             {
-                var ftpClient = SetupCLient(info);
+                var ftpClient = SetupClient(info);
                 if (ftpClient.First == null)
                 {
                     return ftpClient.Second;
@@ -332,6 +332,7 @@ namespace WebFTPViewer.Hubs
             try
             {
                 if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+                if (string.IsNullOrWhiteSpace(dest)) return "false | Empty New Name";
                 if (_ftpClients[Context.ConnectionId].MainClient.FileExists(from))
                 {
                     _ftpClients[Context.ConnectionId].MainClient.Rename(from, dest);
@@ -347,20 +348,61 @@ namespace WebFTPViewer.Hubs
                 return $"false | {e.Message} | {e.StackTrace}";
             }
         }
-        private static Pair<FtpClient, string> SetupCLient(LoginJson info)
+        private Pair<FtpClient, string> SetupClient(LoginJson info)
         {
             try
             {
+                var autovalid = _sharedStorage.TryGetArg<string>("validateanycertificate", out var v) && bool.TryParse(v, out var val) ? val : false;
                 // Create and connect FTP client when SignalR client connects
                 var ftpClient = new FtpClient(info.Host, new NetworkCredential(info.Username, info.Password), info.Port)
                 {
                     Config = new FtpConfig
                     {
                         EncryptionMode = FtpEncryptionMode.Auto,
-                        ValidateAnyCertificate = true,//change to frontend ask
+                        ValidateAnyCertificate = autovalid,
+
                     }
                 };
+                ftpClient.ValidateCertificate += (control, e) =>
+                {
+                    var cert = new X509Certificate2(e.Certificate);
+                    var chain = new X509Chain();
+                    chain.Build(cert);
 
+                    var certDto = new CertificateDto
+                    {
+                        Subject = cert.Subject,
+                        Issuer = cert.Issuer,
+                        Thumbprint = cert.Thumbprint,
+                        SerialNumber = cert.SerialNumber,
+                        NotBefore = cert.NotBefore,
+                        NotAfter = cert.NotAfter,
+                        SignatureAlgorithm = cert.SignatureAlgorithm.FriendlyName,
+                        PublicKeyAlgorithm = cert.PublicKey.Oid.FriendlyName,
+                        PublicKeyLength = cert.PublicKey.Key.KeySize,
+                        RawDataBase64 = Convert.ToBase64String(cert.RawData),
+                        Extensions = cert.Extensions.Cast<X509Extension>()
+                        .Select(x => new Pair<string, string>(
+
+                            x.Oid.FriendlyName,
+                            x.Format(true)
+                        )).ToList(),
+                        Chain = chain.ChainElements.Cast<X509ChainElement>()
+                        .Select(e => new CertificateChainElementDto
+                        {
+                            Subject = e.Certificate.Subject,
+                            Issuer = e.Certificate.Issuer,
+                            Thumbprint = e.Certificate.Thumbprint
+                        }).ToList()
+                    };
+                    // Here you would send certDetails to frontend and await user decision
+                    var res = Clients.Caller.InvokeAsync<bool>("CertConfirm", certDto, default);
+                    //bool userTrusts = AskFrontendUser(certDto); // implement this method
+
+                    // Accept or reject certificate based on user input
+                    //e.Accept = userTrusts;
+                    e.Accept = true;
+                };
                 ftpClient.Connect();
                 return new(ftpClient, null);
             }
