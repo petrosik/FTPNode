@@ -64,7 +64,7 @@
             return $"{size:0.##} {units[unitIndex]}";
         }
 
-        public static bool AllowedActions(this FtpItemDto ftpItem, AllowedAction action, long sizeLimit = 10000)
+        public static bool AllowedActions(this FtpItemDto ftpItem, AllowedAction action, long sizeLimit = 1048576)
         {
             var perms = GetPermissions(ftpItem.Permissions, PermissionScope.Owner);
             if (((action & AllowedAction.Read) == AllowedAction.Read || (action & AllowedAction.Download) == AllowedAction.Download) && (perms & UnixPermission.Read) == UnixPermission.Read)

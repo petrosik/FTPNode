@@ -36,6 +36,8 @@ namespace WebFTPViewer.Hubs
                 settings.Add(new() { Name = "maxfileuploadsize", Value = val });
             if (_sharedStorage.TryGetArg("simultaneousupdown", out val))
                 settings.Add(new() { Name = "simultaneousupdown", Value = val });
+            if (_sharedStorage.TryGetArg("maxeditsize", out val))
+                settings.Add(new() { Name = "maxeditsize", Value = val });
 
             await Clients.Caller.SendAsync("ReceiveInitData", settings);
             await base.OnConnectedAsync();
@@ -281,6 +283,8 @@ namespace WebFTPViewer.Hubs
         public async Task<string> GetCurrentDirectory()
         {
             if (!_ftpClients.ContainsKey(Context.ConnectionId)) return null;
+            try
+            {
             var wd = _ftpClients[Context.ConnectionId].MainClient.GetWorkingDirectory();
             FtpListItem[] items = _ftpClients[Context.ConnectionId].MainClient.GetListing(
                     wd,
@@ -295,6 +299,11 @@ namespace WebFTPViewer.Hubs
                 Modified = i.Modified,
                 Permissions = i.Chmod
             }).ToList()));
+            }
+            catch (Exception e)
+            {
+                return $"{e.Message} | {e.StackTrace}";
+            }
         }
         public async Task<bool> Goto(string targetPath)
         {
@@ -333,15 +342,23 @@ namespace WebFTPViewer.Hubs
             {
                 if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
                 if (string.IsNullOrWhiteSpace(dest)) return "false | Empty New Name";
-                if (_ftpClients[Context.ConnectionId].MainClient.FileExists(from))
-                {
-                    _ftpClients[Context.ConnectionId].MainClient.Rename(from, dest);
-                    return "true";
-                }
-                else
-                {
-                    return "false | Error file or directory could not be found";
-                }
+
+                _ftpClients[Context.ConnectionId].MainClient.Rename(from, dest);
+                return "true";
+            }
+            catch (Exception e)
+            {
+                return $"false | {e.Message} | {e.StackTrace}";
+            }
+        }
+        public async Task<string> CreateFolder(string name)
+        {
+            try
+            {
+                if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+                if (string.IsNullOrWhiteSpace(name)) return "false | Empty New Name";
+
+                return _ftpClients[Context.ConnectionId].MainClient.CreateDirectory(name).ToString();
             }
             catch (Exception e)
             {

@@ -3,86 +3,89 @@
 @inherits LayoutComponentBase
 @inject AppState State
 <div class="page">
-	<div class="sidebar" style="display:none">
-		<NavMenu />
-	</div>
+    <div class="sidebar" style="display:none">
+        <NavMenu />
+    </div>
 
-	<main>
-		<div class="top-row px-4" style="gap:2%; padding:0.3rem;">
-			@if (State.Selected != null)
-			{
-				<div style="height:100%; display:flex; gap:2%; padding-right:2%;">
-					@if (Utils.AllowedActions(State.Selected, AllowedAction.Delete))
-					{
-						<ConfirmButton class="control-button" title="Delete Selected" DialogQuestion="@($"Are you sure you want to delete {State.Selected.Name}?")" OnClick="State.TriggerDelete">
-							<i style="font-size:2rem" class="fa-solid fa-trash-can"></i>
-						</ConfirmButton>
-					}
-					@if (Utils.AllowedActions(State.Selected, AllowedAction.Edit))
-					{
-						<button class="control-button" title="Edit" @onclick="State.TriggerEdit">
-							<i style="font-size:2rem" class="fa-solid fa-pen-to-square"></i>
-						</button>
-					}
-					@if (Utils.AllowedActions(State.Selected, AllowedAction.Edit) && Utils.AllowedActions(State.Selected, AllowedAction.Read))
-					{
-						<button class="control-button" title="View" @onclick="State.TriggerView">
-							<i style="font-size:2rem" class="fa-solid fa-expand"></i>
-						</button>
-					}
-					@if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions))
-					{
-						<button class="control-button" title="Permission Change" @onclick="State.TriggerPermChange">
-							<i style="font-size:2rem" class="fa-solid fa-unlock-keyhole"></i>
-						</button>
-					}
-					@if (Utils.AllowedActions(State.Selected, AllowedAction.Download))
-					{
-						<button class="control-button" title="Permission Change" @onclick="State.TriggerDownload">
-							<i style="font-size:2rem" class="fa-solid fa-download"></i>
-						</button>
-					}
-					@if (Utils.AllowedActions(State.Selected, AllowedAction.Rename))
-					{
-						<button class="control-button" title="Rename" @onclick="State.TriggerRename">
-							<i style="font-size:2rem" class="fa-solid fa-i"></i>
-						</button>
-					}
-				</div>
-			}
-			<button class="control-button" @onclick="State.TriggerUpload" title="Upload File"><i style="font-size:2rem" class="fa-solid fa-file-arrow-up"></i></button>
-			<button class="control-button" @onclick="State.TriggerLogout" title="Logout"><i style="font-size:2rem" class="fa-solid fa-right-from-bracket"></i></button>
-			<div style="height:100%;">
-				<button class="control-button" @onclick="State.TriggerBack" title="Back"><i style="font-size:2rem" class="fa-solid fa-angle-left"></i></button>
-				<button class="control-button" @onclick="State.TriggerForward" title="Forward"><i style="font-size:2rem" class="fa-solid fa-angle-right"></i></button>
-			</div>
-		</div>
+    <main>
+        <div class="top-row" style="gap:1.5vw; padding:0.3rem; display:flex; justify-content:flex-end;  align-items:center;">
+            @if (State.Selected != null)
+            {
+                <div style="height:100%; display:flex; gap:0.2rem; width:fit-content;">
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Delete))
+                    {
+                        <ConfirmButton class="control-button" title="Delete Selected" DialogQuestion="@($"Are you sure you want to delete {State.Selected.Name}?")" OnClick="State.TriggerDelete">
+                            <i style="font-size:2rem" class="fa-solid fa-trash-can"></i>
+                        </ConfirmButton>
+                    }
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Edit, State.Settings.TryGetValue("maxeditsize", out var maxedits) && int.TryParse(maxedits, out var maxe) ? maxe : 1048576))
+                    {
+                        <button class="control-button" title="Edit" @onclick="State.TriggerEdit">
+                            <i style="font-size:2rem" class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                    }
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Edit) && Utils.AllowedActions(State.Selected, AllowedAction.Read))
+                    {
+                        <button class="control-button" title="View" @onclick="State.TriggerView">
+                            <i style="font-size:2rem" class="fa-solid fa-expand"></i>
+                        </button>
+                    }
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions))
+                    {
+                        <button class="control-button" title="Permission Change" @onclick="State.TriggerPermChange">
+                            <i style="font-size:2rem" class="fa-solid fa-unlock-keyhole"></i>
+                        </button>
+                    }
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Download))
+                    {
+                        <button class="control-button" title="Permission Change" @onclick="State.TriggerDownload">
+                            <i style="font-size:2rem" class="fa-solid fa-download"></i>
+                        </button>
+                    }
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Rename))
+                    {
+                        <button class="control-button" title="Rename" @onclick="State.TriggerRename">
+                            <i style="font-size:2rem" class="fa-solid fa-i"></i>
+                        </button>
+                    }
+                </div>
+            }
+            <div style="height:100%; display:flex; flex-wrap:nowrap; gap:0.2rem;">
+                <button class="control-button" @onclick="State.TriggerUpload" title="Upload File"><i style="font-size:2rem" class="fa-solid fa-file-arrow-up"></i></button>
+                <button class="control-button" @onclick="State.TriggerCreateFolder" title="Create Folder"><i style="font-size:2rem" class="fa-solid fa-folder-plus"></i></button>
+            </div>
+            <button class="control-button" @onclick="State.TriggerLogout" title="Logout"><i style="font-size:2rem" class="fa-solid fa-right-from-bracket"></i></button>
+            <div style="height:100%; display:flex; flex-wrap:nowrap; gap:0.2rem;">
+                <button class="control-button" @onclick="State.TriggerBack" title="Back"><i style="font-size:2rem" class="fa-solid fa-angle-left"></i></button>
+                <button class="control-button" @onclick="State.TriggerForward" title="Forward"><i style="font-size:2rem" class="fa-solid fa-angle-right"></i></button>
+            </div>
+        </div>
 
-		<article style="padding-top:0.5rem; padding-left:0.5rem; padding-right:0.5rem;">
-			@Body
-		</article>
-	</main>
+        <article style="padding-top:0.5rem; padding-left:0.5rem; padding-right:0.5rem;">
+            @Body
+        </article>
+    </main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
-	An unhandled error has occurred.
-	<a href="." class="reload">Reload</a>
-	<span class="dismiss">🗙</span>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
 </div>
 
 @code {
-	protected override void OnInitialized()
-	{
-		State.OnChange += HandleStateChange;
-	}
+    protected override void OnInitialized()
+    {
+        State.OnChange += HandleStateChange;
+    }
 
-	private async void HandleStateChange()
-	{
-		await InvokeAsync(StateHasChanged);
-	}
+    private async void HandleStateChange()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
 
-	public void Dispose()
-	{
-		State.OnChange -= HandleStateChange;
-	}
+    public void Dispose()
+    {
+        State.OnChange -= HandleStateChange;
+    }
 }

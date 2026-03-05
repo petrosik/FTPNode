@@ -81,6 +81,11 @@ Example:
 - **passivemode**
   - Type: `bool`
   
+- **validateanycertificate**
+  - Type: `bool`
+  - Default: false
+  - Description: When true automaticly accepts any ftp connection certificate, otherwise asks user
+  
 - **downloadlimit**
   - Type: `number` (in bytes)
   - Default: 131072 (128KB)
@@ -104,7 +109,7 @@ Example:
   - Default: false
   - Description: Changes if upload and download can run at the same time
 
-- **validateanycertificate**
-  - Type: `bool`
-  - Default: false
-  - Description: When true automaticly accepts any ftp connection certificate, otherwise asks user
+- **maxeditsize**
+  - Type: `number` (in bytes)
+  - Default: 1048576 (1MB)
+  - Description: Determines file size the frontend is allowed to edit
