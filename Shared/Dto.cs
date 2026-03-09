@@ -19,6 +19,8 @@ namespace Shared
         [Required]
         public string Password { get; set; }
         public bool PassiveMode { get; set; } = true;
+        public bool AcceptCert { get; set; } = false;
+        public string OriginalCertThumbprint { get; set; }
 
         public LoginJson(string host, int port, string username, string password, bool passivemode)
         {

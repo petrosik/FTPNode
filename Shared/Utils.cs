@@ -110,6 +110,9 @@
             }
             return false;
         }
-
+        public static string ToSaneString(this DateTime time)
+        {
+            return time.ToString("yyyy/MM/dd HH:mm:ss");
+        }
     }
 }

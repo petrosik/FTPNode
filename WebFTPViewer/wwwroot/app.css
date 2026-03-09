@@ -167,3 +167,9 @@ h1:focus {
     .button-context:hover {
         background-color: #cacaca
     }
+
+.scrollable {
+    scrollbar-width: thin;
+    overflow-x: hidden;
+    overflow-y: auto;
+}

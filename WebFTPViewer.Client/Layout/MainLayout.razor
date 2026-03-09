@@ -30,7 +30,7 @@
                             <i style="font-size:2rem" class="fa-solid fa-expand"></i>
                         </button>
                     }
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions))
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions) && (!State.Settings.TryGetValue("disablepermchange", out var allow) || !bool.TryParse(allow, out var val) || !val))
                     {
                         <button class="control-button" title="Permission Change" @onclick="State.TriggerPermChange">
                             <i style="font-size:2rem" class="fa-solid fa-unlock-keyhole"></i>

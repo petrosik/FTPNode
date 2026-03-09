@@ -1,0 +1,41 @@
+﻿.cert-container {
+    max-width: 900px;
+    font-family: Arial;
+}
+
+.cert-section {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.cert-grid {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    row-gap: 8px;
+}
+
+.label {
+    font-weight: bold;
+}
+
+.mono {
+    font-family: monospace;
+    word-break: break-all;
+}
+
+.cert-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .cert-table th,
+    .cert-table td {
+        border: 1px solid #ddd;
+        padding: 6px;
+    }
+
+    .cert-table th {
+        background: #f4f4f4;
+    }

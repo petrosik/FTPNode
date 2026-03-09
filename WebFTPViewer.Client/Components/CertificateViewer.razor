@@ -1,0 +1,150 @@
+﻿@using System.Text
+@using Shared
+@inject IJSRuntime JS
+
+@if (Certificate == null)
+{
+    <div>No certificate loaded.</div>
+}
+else
+{
+    <div class="cert-container">
+
+        <h3>Certificate</h3>
+
+        <div class="cert-section">
+            <h4>Basic Information</h4>
+
+            <div class="cert-grid">
+                <div class="label">Issued To</div>
+                <div>@Certificate.Subject</div>
+
+                <div class="label">Issued By</div>
+                <div>@Certificate.Issuer</div>
+
+                <div class="label">Thumbprint</div>
+                <div class="mono">@Certificate.Thumbprint</div>
+
+                <div class="label">Serial Number</div>
+                <div class="mono">@Certificate.SerialNumber</div>
+
+                <div class="label">Signature Algorithm</div>
+                <div>@Certificate.SignatureAlgorithm</div>
+            </div>
+        </div>
+
+
+        <div class="cert-section">
+            <h4>Validity</h4>
+
+            <div class="cert-grid">
+                <div class="label">Valid From</div>
+                <div>@Certificate.NotBefore.ToSaneString()</div>
+
+                <div class="label">Valid To</div>
+                <div>@Certificate.NotAfter.ToSaneString()</div>
+            </div>
+        </div>
+
+
+        <div class="cert-section">
+            <h4>Public Key</h4>
+
+            <div class="cert-grid">
+                <div class="label">Algorithm</div>
+                <div>@Certificate.PublicKeyAlgorithm</div>
+
+                <div class="label">Key Length</div>
+                <div>@Certificate.PublicKeyLength bits</div>
+            </div>
+        </div>
+
+
+        <div class="cert-section">
+            <h4>Extensions</h4>
+
+            @if (Certificate.Extensions?.Count > 0)
+            {
+                <table class="cert-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ext in Certificate.Extensions)
+                        {
+                            <tr>
+                                <td>@ext.First</td>
+                                <td>@ext.Second</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div>No extensions</div>
+            }
+        </div>
+
+
+        <div class="cert-section">
+            <h4>Certificate Chain</h4>
+
+            @if (Certificate.Chain?.Count > 0)
+            {
+                <table class="cert-table">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Issuer</th>
+                            <th>Thumbprint</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Certificate.Chain)
+                        {
+                            <tr>
+                                <td>@c.Subject</td>
+                                <td>@c.Issuer</td>
+                                <td class="mono">@c.Thumbprint</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div>No chain information</div>
+            }
+        </div>
+
+
+        @if (!string.IsNullOrWhiteSpace(Certificate.RawDataBase64))
+        {
+            <div class="cert-section">
+                <h4>Export</h4>
+
+                <button class="btn btn-primary" @onclick="DownloadCertificate">
+                    Download Base64
+                </button>
+            </div>
+        }
+
+    </div>
+}
+
+@code {
+    [Parameter]
+    public CertificateDto Certificate { get; set; }
+
+    void DownloadCertificate()
+    {
+        var bytes = Convert.FromBase64String(Certificate.RawDataBase64);
+        var file = Convert.ToBase64String(bytes);
+        var url = $"data:application/x-x509-ca-cert;base64,{file}";
+        JS.InvokeVoidAsync("open", url, "_blank");
+    }
+}

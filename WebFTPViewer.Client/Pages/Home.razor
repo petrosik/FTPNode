@@ -85,7 +85,7 @@
         </div>
     </div>
 }
-@if (UploadRunning || DownloadRunning || UploadQue.Count >0 || DownloadQue.Count >0)
+@if (UploadRunning || DownloadRunning || UploadQue.Count > 0 || DownloadQue.Count > 0)
 {
     <div style="overflow-y:auto;padding:2vh;z-index:2010; display:flex; flex-direction:column; position:fixed; right:2vh; bottom:2vh; width:25vw; height:20vh; min-width:250px; min-height:50px; box-shadow:2px 2px 10px rgba(0,0,0,0.5); border-radius:4px">
         @foreach (var item in UploadQue)
@@ -193,7 +193,7 @@
                 {
                     <i class="@v" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
                 }
-                <button class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 30fr 30fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault>
+                <button class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 10fr 30fr 10fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault>
                     @if (Renaming && State.Selected != null && State.Selected.Equals(item))
                     {
                         <input @ref="renameInput" @bind="NewName" @bind:event="oninput" @onclick:stopPropagation="true" @onmousedown:stopPropagation="true" @onblur="() => { if (Renaming) SaveRename(); }" @onkeydown="HandleKeyDownRename" style="margin-right:10%;" />
@@ -202,8 +202,9 @@
                     {
                         <p style="font-weight:bold; margin-bottom:0; text-align:left; overflow-x:hidden; text-overflow:ellipsis;" title="@item.Name">@item.Name</p>
                     }
-                    <p style="font-weight:bold; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color: #707070" : "")" title="@(item.Type == FileType.Directory ? "Not the size of the content" : "")">@item.Size.ToClosestSize()</p>
-                    <p style="font-weight:bold; margin-bottom:0; text-align:left;">@Utils.GetUnixPermissions(item.Permissions)</p>
+                    <p style="font-weight:bold; margin-right:20%; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color:#707070" : "")" title="@(item.Type == FileType.Directory ? "Not the size of the content" : "")">@item.Size.ToClosestSize()</p>
+                    <p style="font-weight:bold; overflow-x:hidden; text-overflow:ellipsis; margin-bottom:0; text-align:left;">@item.Modified.ToSaneString()</p>
+                    <p style="font-family: monospace; font-weight:bold; overflow-x:hidden; text-overflow:ellipsis; margin-bottom:0; text-align:left;">@Utils.GetUnixPermissions(item.Permissions)</p>
                 </button>
                 index++;
             }
@@ -220,7 +221,7 @@ else
 {
     <div style="height:5vh" class="spinner"></div>
 }
-<div @onclick="@(()=>{Error = "";})">
+<div @onclick="@(() => { Error = ""; })">
     <p style="color:red;">@Error</p>
 </div>
 @if (State.Selected != null && showMenu)
@@ -238,7 +239,7 @@ else
                 Edit
             </button>
         }
-        @if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions))
+        @if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions) && (!State.Settings.TryGetValue("disablepermchange", out var allow) || !bool.TryParse(allow, out var val) || !val))
         {
             <button class="button-context">
                 Permission Change
@@ -266,13 +267,25 @@ else
 }
 @if (CreateFolderOpen)
 {
-    <div style="display:flex; z-index:2010; background-color:rgba(0,0,0,0.5); position:fixed; top:0; left:0; width:100%; height:100%;justify-content:center;align-items:center;" @onclick="@(() => { CreateFolderOpen = false; StateHasChanged(); })" @onkeydown=@((e) => { if (e.Key == "Enter") { CreateFolder(); CreateFolderOpen = false; } else if (e.Key == "Escape") { CreateFolderOpen = false; } })>
+    <div style="display:flex; z-index:2010; background-color:rgba(0,0,0,0.5); position:fixed; top:0; left:0; width:100%; height:100%;justify-content:center;align-items:center;" @onclick="@(() => { CreateFolderOpen = false; })" @onkeydown=@((e) => { if (e.Key == "Enter") { CreateFolder(); CreateFolderOpen = false; } else if (e.Key == "Escape") { CreateFolderOpen = false; } })>
         <div style="height:20%; width:50%; border-radius:10px; display:flex;justify-content:center;align-items:center; flex-direction:column;gap:8%;background-color:white" @onclick:stopPropagation="true">
             <h3>New Folder Name:</h3>
-            <input @ref="createFolderRef" @bind=CreateFolderName />
+            <input @ref="createFolderRef" @bind=CreateFolderName @bind:event="oninput" />
             <div style="display:flex;flex-direction:row;gap:20%;justify-content:center">
-                <button class="btn-primary" style="padding:10%" onclick="@(() => { CreateFolderOpen = false; CreateFolder(); })" tabindex="0">Create</button>
-                <button class="secondary-button" style="padding:10%" onclick="@(() => { CreateFolderOpen = false; })" tabindex="1">Cancel</button>
+                <button class="btn-primary" style="padding:10%" @onclick="@(() => { CreateFolderOpen = false; CreateFolder(); })" tabindex="0">Create</button>
+                <button class="secondary-button" style="padding:10%" @onclick="@(() => { CreateFolderOpen = false; })" tabindex="1">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+@if (CertWindowOpen)
+{
+    <div style="display:flex; z-index:2060; background-color:rgba(0,0,0,0.5); position:fixed; top:0; left:0; width:100%; height:100%;justify-content:center;align-items:center;" @onkeydown=@((e) => { if (e.Key == "Enter") { CertWindowOpen = false; } else if (e.Key == "Escape") { CertWindowOpen = false; } })>
+        <div class="scrollable" style="height:80%; width:70%; padding:10%; border-radius:10px; display:flex;align-items:center; flex-direction:column;gap:8%;background-color:white" @onclick:stopPropagation="true">
+            <CertificateViewer Certificate="Certificate" />
+            <div style="display:flex;flex-direction:row;gap:20%;justify-content:center">
+                <button class="btn-primary" style="padding:10%" @onclick="@(async () => { CertWindowOpen = false; _certQuestion.TrySetResult(true); })" tabindex="0">Accept</button>
+                <button class="secondary-button" style="padding:10%" @onclick="@(async () => { CertWindowOpen = false; _certQuestion.TrySetResult(false); })" tabindex="1">Cancel</button>
             </div>
         </div>
     </div>
@@ -299,7 +312,10 @@ else
     private DotNetObjectReference<Home>? dotnetRef;
     private Dictionary<string, UploadQueItemDto> UploadQue = new();
     private Dictionary<string, UploadQueItemDto> DownloadQue = new();
-    
+    private CertificateDto? Certificate { get; set; } = null;
+    private bool CertWindowOpen = false;
+    private TaskCompletionSource<bool> _certQuestion;
+
     private bool showMenu;
     private string xpx = "200px";
     private string ypx = "200px";
@@ -467,13 +483,20 @@ else
             if (State.Settings.TryGetValue("passivemode", out var pass) && bool.TryParse(pass, out var pas))
                 LoginStuff.PassiveMode = pas;
 
-            var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
-            if (!bool.TryParse(res, out _))
+
+            var cert = await Hub.InvokeAsync<CertificateDto?>("GetCert", LoginStuff.Host, LoginStuff.Port);
+            if (cert != null)
             {
-                Error = res.Substring(0, res.IndexOf('|')).Trim();
-                Console.WriteLine(res.Substring(res.IndexOf('|') + 1).Trim());
+                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                CertWindowOpen = true;
+                Certificate = cert;
+                _certQuestion = tcs;
+                StateHasChanged();
+                LoginStuff.AcceptCert = await tcs.Task;
+                LoginStuff.OriginalCertThumbprint = cert.Thumbprint;
             }
-            else
+            var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
+            if (CheckReturn(res))
             {
                 LoggedIn = true;
                 GetDirectory();
@@ -511,6 +534,11 @@ else
         LoggedIn = false;
         Loading = true;
         CurrentDir = null;
+        Certificate = null;
+        _certQuestion = null;
+        LoginStuff.Password = null;
+        LoginStuff.AcceptCert = false;
+        LoginStuff.OriginalCertThumbprint = null;
         dragEventsRegistered = false;
         await OnAfterRenderAsync(true);
         StateHasChanged();
@@ -576,13 +604,13 @@ else
         {
             result = await Hub.InvokeAsync<string>("CreateFolder", $"{State.Selected.Name}/{CreateFolderName}");
             if (CheckReturn(result))
-            GetDirectory(State.Selected.Name, false);
+                GetDirectory(State.Selected.Name, false);
         }
         else
         {
             result = await Hub.InvokeAsync<string>("CreateFolder", CreateFolderName);
             if (CheckReturn(result))
-            GetDirectory(null, true);
+                GetDirectory(null, true);
         }
     }
     private async void Upload()
@@ -793,7 +821,7 @@ else
         Loading = true;
         State.Selected = null;
         StateHasChanged();
-        var dat ="";
+        var dat = "";
         try
         {
             if (string.IsNullOrWhiteSpace(path))
@@ -817,7 +845,7 @@ else
             Error = spl[0];
             foreach (var item in spl)
             {
-            Console.WriteLine(item);
+                Console.WriteLine(item);
             }
             Console.WriteLine(e.Message);
             Console.WriteLine(e.StackTrace);
@@ -839,8 +867,23 @@ else
 
             if (!ignoreHistory && (History.Count == 0 || History.Last.Value != CurrentDir.Value.Key))
             {
-                History.AddLast(CurrentDir.Value.Key);
-                CurrentHis = History.Last;
+                if (CurrentHis != null)
+                {
+                    var node = CurrentHis.Next;
+                    while (node != null)
+                    {
+                        var next = node.Next;
+                        History.Remove(node);
+                        node = next;
+                    }
+                    History.AddAfter(CurrentHis,CurrentDir.Value.Key);
+                    CurrentHis = CurrentHis.Next;
+                }
+                else
+                {
+                    History.AddLast(CurrentDir.Value.Key);
+                    CurrentHis = History.Last;
+                }
             }
             dragEventsRegistered = false;
             await OnAfterRenderAsync(true);
@@ -883,6 +926,7 @@ else
             {
                 await Hub.StopAsync();
                 await Hub.DisposeAsync();
+                Hub = null;
             }
             catch { }
         }
@@ -913,7 +957,7 @@ else
                 State.Settings = data.ToDictionary(y => y.Name, x => x.Value);
                 StateHasChanged();
 
-                //try reconnect with current State.Settings if exist
+                //try reconnect with current Settings if exist
                 if (!string.IsNullOrWhiteSpace(LoginStuff.Username) && !string.IsNullOrWhiteSpace(LoginStuff.Host) && !string.IsNullOrWhiteSpace(LoginStuff.Password))
                 {
                     var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
@@ -924,11 +968,6 @@ else
                     }
                 }
             });
-        Hub.On<CertificateDto, bool>("CertConfirm", data =>
-        {
-            Console.WriteLine(data.Issuer);
-            return true;
-        });
     }
     private bool HubGood()
     {

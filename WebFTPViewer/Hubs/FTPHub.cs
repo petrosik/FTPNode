@@ -1,9 +1,14 @@
 ﻿using FluentFTP;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.SignalR;
 using Shared;
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Text.Json;
 using WebFTPViewer.Services;
 
@@ -14,6 +19,7 @@ namespace WebFTPViewer.Hubs
         // Store FTP clients per connection
         // first is upload second is download streams
         private static readonly ConcurrentDictionary<string, FTPStorage> _ftpClients = new();
+        private static readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _pendingCertRequests = new();
         private readonly ISharedStorage _sharedStorage;
 
         public FTPHub(ISharedStorage sharedService)
@@ -38,6 +44,8 @@ namespace WebFTPViewer.Hubs
                 settings.Add(new() { Name = "simultaneousupdown", Value = val });
             if (_sharedStorage.TryGetArg("maxeditsize", out val))
                 settings.Add(new() { Name = "maxeditsize", Value = val });
+            if (_sharedStorage.TryGetArg("disablepermchange", out val))
+                settings.Add(new() { Name = "disablepermchange", Value = val });
 
             await Clients.Caller.SendAsync("ReceiveInitData", settings);
             await base.OnConnectedAsync();
@@ -57,7 +65,7 @@ namespace WebFTPViewer.Hubs
                 // Open FTP stream for writing
                 try
                 {
-                    var ftpClient = SetupClient(clientPair.LoginJson);
+                    var ftpClient = await SetupClient(clientPair.LoginJson, true);
                     ftpClient.First.SetWorkingDirectory(metadata.UploadPath);
                     var ftpStreams = ftpClient.First.OpenWrite(metadata.UploadPath.EndsWith('/') ? metadata.UploadPath + metadata.Name : metadata.UploadPath + "/" + metadata.Name);
                     clientPair.UploadQue[metadata.Name] = new(ftpClient.First, ftpStreams);
@@ -133,7 +141,7 @@ namespace WebFTPViewer.Hubs
 
             try
             {
-                var ftpClient = SetupClient(clientPair.LoginJson);
+                var ftpClient = await SetupClient(clientPair.LoginJson, true);
                 if (ftpClient.First == null)
                 {
                     return ftpClient.Second;
@@ -266,7 +274,7 @@ namespace WebFTPViewer.Hubs
         {
             try
             {
-                var ftpClient = SetupClient(info);
+                var ftpClient = await SetupClient(info);
                 if (ftpClient.First == null)
                 {
                     return ftpClient.Second;
@@ -277,7 +285,7 @@ namespace WebFTPViewer.Hubs
             catch (Exception ex)
             {
                 Console.WriteLine($"Error initializing FTP client: {ex.Message}");
-                return $"{ex.Message} | {ex.StackTrace}";
+                return $"{false} | {ex.Message} | {ex.StackTrace}";
             }
         }
         public async Task<string> GetCurrentDirectory()
@@ -285,20 +293,20 @@ namespace WebFTPViewer.Hubs
             if (!_ftpClients.ContainsKey(Context.ConnectionId)) return null;
             try
             {
-            var wd = _ftpClients[Context.ConnectionId].MainClient.GetWorkingDirectory();
-            FtpListItem[] items = _ftpClients[Context.ConnectionId].MainClient.GetListing(
-                    wd,
-                    FtpListOption.Modify |
-                    FtpListOption.Size |
-                    FtpListOption.NoPath | FtpListOption.IncludeSelfAndParent);
-            return JsonSerializer.Serialize(new KeyValuePair<string, List<FtpItemDto>>(wd, items.Select(i => new FtpItemDto
-            {
-                Name = i.Name,
-                Type = Enum.TryParse<FileType>(i.Type.ToString(), out var en) ? en : FileType.Unknown,
-                Size = i.Size,
-                Modified = i.Modified,
-                Permissions = i.Chmod
-            }).ToList()));
+                var wd = _ftpClients[Context.ConnectionId].MainClient.GetWorkingDirectory();
+                FtpListItem[] items = _ftpClients[Context.ConnectionId].MainClient.GetListing(
+                        wd,
+                        FtpListOption.Modify |
+                        FtpListOption.Size |
+                        FtpListOption.NoPath | FtpListOption.IncludeSelfAndParent);
+                return JsonSerializer.Serialize(new KeyValuePair<string, List<FtpItemDto>>(wd, items.Select(i => new FtpItemDto
+                {
+                    Name = i.Name,
+                    Type = Enum.TryParse<FileType>(i.Type.ToString(), out var en) ? en : FileType.Unknown,
+                    Size = i.Size,
+                    Modified = i.Modified,
+                    Permissions = i.Chmod
+                }).ToList()));
             }
             catch (Exception e)
             {
@@ -365,11 +373,58 @@ namespace WebFTPViewer.Hubs
                 return $"false | {e.Message} | {e.StackTrace}";
             }
         }
-        private Pair<FtpClient, string> SetupClient(LoginJson info)
+        public async Task<string> ChangePermisson(string name, int permissons)
+        {
+            if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+            try
+            {
+                _ftpClients[Context.ConnectionId].MainClient.Chmod(name,permissons);
+            }
+            catch (Exception e)
+            {
+                return $"false | {e.Message} | {e.StackTrace}";
+            }
+            return "";
+        }
+        public async Task<CertificateDto?> GetCert(string host, int port)
+        {
+            var cert = await GetFtpServerCertificate(host, port);
+            if (cert == null) return null;
+            var chain = new X509Chain();
+            chain.Build(cert);
+            var certDto = new CertificateDto
+            {
+                Subject = cert.Subject,
+                Issuer = cert.Issuer,
+                Thumbprint = cert.Thumbprint,
+                SerialNumber = cert.SerialNumber,
+                NotBefore = cert.NotBefore,
+                NotAfter = cert.NotAfter,
+                SignatureAlgorithm = cert.SignatureAlgorithm.FriendlyName,
+                PublicKeyAlgorithm = cert.PublicKey.Oid.FriendlyName,
+                PublicKeyLength = cert.PublicKey.Key.KeySize,
+                RawDataBase64 = Convert.ToBase64String(cert.RawData),
+                Extensions = cert.Extensions.Cast<X509Extension>()
+                               .Select(x => new Pair<string, string>(
+                                   x.Oid.FriendlyName,
+                                   x.Format(true)))
+                               .ToList(),
+                Chain = chain.ChainElements.Cast<X509ChainElement>()
+                               .Select(e => new CertificateChainElementDto
+                               {
+                                   Subject = e.Certificate.Subject,
+                                   Issuer = e.Certificate.Issuer,
+                                   Thumbprint = e.Certificate.Thumbprint
+                               }).ToList()
+            };
+            return certDto;
+        }
+        private async Task<Pair<FtpClient, string>> SetupClient(LoginJson info, bool skipCertVerf = false)
         {
             try
             {
                 var autovalid = _sharedStorage.TryGetArg<string>("validateanycertificate", out var v) && bool.TryParse(v, out var val) ? val : false;
+
                 // Create and connect FTP client when SignalR client connects
                 var ftpClient = new FtpClient(info.Host, new NetworkCredential(info.Username, info.Password), info.Port)
                 {
@@ -377,48 +432,21 @@ namespace WebFTPViewer.Hubs
                     {
                         EncryptionMode = FtpEncryptionMode.Auto,
                         ValidateAnyCertificate = autovalid,
-
                     }
                 };
                 ftpClient.ValidateCertificate += (control, e) =>
                 {
-                    var cert = new X509Certificate2(e.Certificate);
-                    var chain = new X509Chain();
-                    chain.Build(cert);
-
-                    var certDto = new CertificateDto
+                    try
                     {
-                        Subject = cert.Subject,
-                        Issuer = cert.Issuer,
-                        Thumbprint = cert.Thumbprint,
-                        SerialNumber = cert.SerialNumber,
-                        NotBefore = cert.NotBefore,
-                        NotAfter = cert.NotAfter,
-                        SignatureAlgorithm = cert.SignatureAlgorithm.FriendlyName,
-                        PublicKeyAlgorithm = cert.PublicKey.Oid.FriendlyName,
-                        PublicKeyLength = cert.PublicKey.Key.KeySize,
-                        RawDataBase64 = Convert.ToBase64String(cert.RawData),
-                        Extensions = cert.Extensions.Cast<X509Extension>()
-                        .Select(x => new Pair<string, string>(
+                        var cert1 = new X509Certificate2(e.Certificate);
 
-                            x.Oid.FriendlyName,
-                            x.Format(true)
-                        )).ToList(),
-                        Chain = chain.ChainElements.Cast<X509ChainElement>()
-                        .Select(e => new CertificateChainElementDto
-                        {
-                            Subject = e.Certificate.Subject,
-                            Issuer = e.Certificate.Issuer,
-                            Thumbprint = e.Certificate.Thumbprint
-                        }).ToList()
-                    };
-                    // Here you would send certDetails to frontend and await user decision
-                    var res = Clients.Caller.InvokeAsync<bool>("CertConfirm", certDto, default);
-                    //bool userTrusts = AskFrontendUser(certDto); // implement this method
-
-                    // Accept or reject certificate based on user input
-                    //e.Accept = userTrusts;
-                    e.Accept = true;
+                        e.Accept = skipCertVerf || info.AcceptCert && info.OriginalCertThumbprint != null && cert1.Thumbprint == info.OriginalCertThumbprint;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error during certificate validation: {ex.Message}");
+                        e.Accept = autovalid;
+                    }
                 };
                 ftpClient.Connect();
                 return new(ftpClient, null);
@@ -426,8 +454,33 @@ namespace WebFTPViewer.Hubs
             catch (Exception ex)
             {
                 Console.WriteLine($"Error initializing FTP client: {ex.Message}");
-                return new(null, $"{ex.Message} | {ex.StackTrace}");
+                return new(null, $"false | {ex.Message}");
             }
+        }
+        public async Task<X509Certificate2?> GetFtpServerCertificate(string host, int port)
+        {
+            using var tcp = new TcpClient();
+            await tcp.ConnectAsync(host, port);
+
+            var stream = tcp.GetStream();
+            var reader = new StreamReader(stream, Encoding.ASCII, leaveOpen: true);
+            var writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true };
+
+            // read welcome message
+            await reader.ReadLineAsync();
+
+            // request TLS upgrade
+            await writer.WriteLineAsync("AUTH TLS");
+            await reader.ReadLineAsync();
+
+            var ssl = new SslStream(stream, false, (sender, cert, chain, errors) => true);
+
+            await ssl.AuthenticateAsClientAsync(host);
+
+            if (ssl.RemoteCertificate == null)
+                return null;
+
+            return new X509Certificate2(ssl.RemoteCertificate);
         }
     }
 }

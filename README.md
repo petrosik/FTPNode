@@ -112,4 +112,9 @@ Example:
 - **maxeditsize**
   - Type: `number` (in bytes)
   - Default: 1048576 (1MB)
-  - Description: Determines file size the frontend is allowed to edit
+  - Description: Determines file size the frontend is allowed to edit or view
+  
+- **disablepermchange**
+  - Type: `bool`
+  - Default: false
+  - Description: Determines if frontend shows permission change button
