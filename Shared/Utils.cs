@@ -114,5 +114,6 @@
         {
             return time.ToString("yyyy/MM/dd HH:mm:ss");
         }
+        public static int CalcPerm(bool r, bool w, bool x) => (r ? 4 : 0) + (w ? 2 : 0) + (x ? 1 : 0);
     }
 }

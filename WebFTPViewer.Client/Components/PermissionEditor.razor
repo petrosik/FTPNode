@@ -1,0 +1,95 @@
+﻿@using Microsoft.AspNetCore.Components
+
+<table class="table">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Read</th>
+            <th>Write</th>
+            <th>Execute</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var row in Rows)
+        {
+            <tr>
+                <td>@row.Name</td>
+                @foreach (var perm in row.Flags.Keys)
+                {
+                    <td>
+                        <input type="checkbox"
+                               checked="@Get(row.Value, row.Flags[perm])"
+                               @onchange="e => OnChange(row, row.Flags[perm], (bool)e.Value)" />
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    public class PermissionRow
+    {
+        public string Name { get; set; }
+        public int Value { get; set; }
+        public Dictionary<string, int> Flags { get; set; } = new()
+        {
+            ["Read"] = 4,
+            ["Write"] = 2,
+            ["Execute"] = 1
+        };
+    }
+
+    private List<PermissionRow> Rows = new()
+    {
+        new PermissionRow { Name = "User" },
+        new PermissionRow { Name = "Group" },
+        new PermissionRow { Name = "Other" }
+    };
+
+    [Parameter]
+    public int Perm
+    {
+        get => _perm;
+        set
+        {
+            if (_perm != value)
+            {
+                _perm = value;
+                SetRowsFromPerm(_perm);
+            }
+        }
+    }
+    private int _perm;
+
+    [Parameter]
+    public EventCallback<int> PermChanged { get; set; }
+
+    private bool Get(int value, int flag) => (value & flag) != 0;
+
+    private async Task OnChange(PermissionRow row, int flag, bool checkedValue)
+    {
+        if (checkedValue)
+            row.Value |= flag;
+        else
+            row.Value &= ~flag;
+
+        _perm = CalcPerm();
+        await PermChanged.InvokeAsync(_perm);
+    }
+
+    private int CalcPerm()
+    {
+        return int.Parse($"{Rows[0].Value}{Rows[1].Value}{Rows[2].Value}");
+    }
+
+    private void SetRowsFromPerm(int perm)
+    {
+        var str = perm.ToString().PadLeft(3, '0');
+        if (str.Length != 3) return;
+
+        Rows[0].Value = int.Parse(str[0].ToString());
+        Rows[1].Value = int.Parse(str[1].ToString());
+        Rows[2].Value = int.Parse(str[2].ToString());
+    }
+}

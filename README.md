@@ -1,5 +1,7 @@
 # Overview
 
+A configurable web-based FTP client built with Blazor. It provides a browser interface for managing files on FTP servers with a modular architecture that allows extensive configuration and customization of features, behaviors, and integrations.
+
 **Do not forget setup network info for the container** (depending on use case it might need network connection to internet)
 
 # Config Overview
@@ -19,8 +21,8 @@ You can optionally mount a host folder containing configuration overrides. The c
 Example:
 
 ```bash
-docker run -p 8080:80 \
-  -v /host/path/config:/app/config \
+docker run -p 8080:80
+  -v /host/path/config:/app/config
   my-ftp-web-view
 ```
 
@@ -37,9 +39,9 @@ You can override any configuration value using environment variables.
 Example:
 
 ```bash
-docker run -p 8080:80 \
-  -e FTP__Title="FTP Custom Title" \
-  -e FTP__Port="21" \
+docker run -p 8080:80
+  -e FTP__Title="FTP Custom Title"
+  -e FTP__Port="21"
   my-ftp-web-view
 ```
 

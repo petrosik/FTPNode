@@ -8,7 +8,7 @@
         public event Action? UploadClicked;
         public event Func<Task>? DownloadClicked;
         public event Action? DeleteClicked;
-        public event Action? PermChangeClicked;
+        public event Func<Task>? PermChangeClicked;
         public event Action? EditClicked;
         public event Func<Task>? ViewClicked;
         public event Func<Task>? RenameClicked;
@@ -24,7 +24,12 @@
                 await DownloadClicked.Invoke();
         }
         public void TriggerDelete() => DeleteClicked?.Invoke();
-        public void TriggerPermChange() => PermChangeClicked?.Invoke();
+        public async Task TriggerPermChange()
+        {
+            if (PermChangeClicked is not null)
+                await PermChangeClicked?.Invoke();
+        }
+        
         public void TriggerEdit() => EditClicked?.Invoke();
         public async Task TriggerView()
         {
