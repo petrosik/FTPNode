@@ -147,7 +147,7 @@
 		}
 	</div>
 }
-@if (CurrentDir.HasValue)
+@if (CurrentDir != null)
 {
 	<div style="display:flex; flex-direction:row;justify-content:space-between">
 		<div style="display:flex; flex-direction:row;">
@@ -159,7 +159,7 @@
 				@for (int i = 0; i < CurrDirPath.Count; i++)
 				{
 					var d = i;
-					<button style="border:none; background:none; padding:0" @onclick="@(() => { GetDirectory(CurrentDir.Value.Key.Substring(0, CurrentDir.Value.Key.IndexOf(CurrDirPath[d]) + CurrDirPath[d].Length)); })">
+					<button style="border:none; background:none; padding:0" @onclick="@(() => { GetDirectory(CurrentDir.First.Substring(0, CurrentDir.First.IndexOf(CurrDirPath[d]) + CurrDirPath[d].Length)); })">
 						<h2 style="margin:0; text-wrap-mode:nowrap;text-wrap:nowrap;">@CurrDirPath[i]</h2>
 					</button>
 					@if (CurrDirPath.Count != i + 1)
@@ -184,7 +184,7 @@
 			@{
 				int index = 0;
 			}
-			@foreach (var item in CurrentDir.Value.Value.OrderBy(x => x.Type).ThenBy(x => x.Name))
+			@foreach (var item in CurrentDir.Second.OrderBy(x => x.Type).ThenBy(x => x.Name))
 			{
 				string? v = GetFileIcon(item.Type);
 				if (v == null)
@@ -329,7 +329,7 @@ else
 	private HubConnection? Hub { get; set; }
 	private bool Loading { get; set; } = true;
 	private string Error { get; set; } = "";
-	private KeyValuePair<string, List<FtpItemDto>>? CurrentDir { get; set; } = null;
+	private Pair<string, List<FtpItemDto>>? CurrentDir { get; set; } = null;
 	private List<string> CurrDirPath { get; set; } = null;
 	private LinkedList<string> History { get; set; } = new();
 	private LinkedListNode<string>? CurrentHis { get; set; } = null;
@@ -432,7 +432,7 @@ else
 					await Hub.InvokeAsync("UploadCancel", file.Name, true);
 					goto skip;
 				}
-				var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.Value.Key }, new byte[0], offset);
+				var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.First }, new byte[0], offset);
 				queueItem.Proggress = 100;
 			}
 			else
@@ -451,7 +451,7 @@ else
 					byte[] chunk = bytesRead == buffer.Length ? buffer : buffer[..bytesRead];
 
 					// Send chunk to SignalR hub
-					var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.Value.Key }, chunk, offset);
+					var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.First }, chunk, offset);
 
 					offset += bytesRead;
 					if (!long.TryParse(next, out var nexz) || offset != nexz)
@@ -737,7 +737,7 @@ else
 			await _upDownSemaphore.WaitAsync();
 			lockTaken = true;
 		}
-		var res = await Hub.InvokeAsync<string>("DownloadStart", filename, CurrentDir.Value.Key);
+		var res = await Hub.InvokeAsync<string>("DownloadStart", filename, CurrentDir.First);
 
 		if (!CheckReturn(res))
 		{
@@ -874,7 +874,7 @@ else
 			Loading = false;
 			StateHasChanged();
 		}
-		if (!dragEventsRegistered && CurrentDir.HasValue)
+		if (!dragEventsRegistered && CurrentDir != null)
 		{
 			dragEventsRegistered = true;
 			dotnetRef = DotNetObjectReference.Create(this);
@@ -922,12 +922,12 @@ else
 			if (string.IsNullOrWhiteSpace(path))
 			{
 				dat = await Hub.InvokeAsync<string>("GetCurrentDirectory");
-				CurrentDir = JsonSerializer.Deserialize<KeyValuePair<string, List<FtpItemDto>>>(dat);
+				CurrentDir = JsonSerializer.Deserialize<Pair<string, List<FtpItemDto>>>(dat);
 			}
 			else if (Hub != null && await Hub.InvokeAsync<bool>("GoTo", path))
 			{
 				dat = await Hub.InvokeAsync<string>("GetCurrentDirectory");
-				CurrentDir = JsonSerializer.Deserialize<KeyValuePair<string, List<FtpItemDto>>>(dat);
+				CurrentDir = JsonSerializer.Deserialize<Pair<string, List<FtpItemDto>>>(dat);
 			}
 			else
 			{
@@ -947,9 +947,9 @@ else
 			return;
 		}
 
-		if (CurrentDir.HasValue)
+		if (CurrentDir != null)
 		{
-			var p = CurrentDir.Value.Key.Split('/');
+			var p = CurrentDir.First.Split('/');
 			CurrDirPath = new();
 			if (p.Where(x => !string.IsNullOrWhiteSpace(x)).Count() <= 0)
 			{
@@ -960,7 +960,7 @@ else
 				CurrDirPath = p.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
 			}
 
-			if (!ignoreHistory && (History.Count == 0 || History.Last.Value != CurrentDir.Value.Key))
+			if (!ignoreHistory && (History.Count == 0 || History.Last.Value != CurrentDir.First))
 			{
 				if (CurrentHis != null)
 				{
@@ -971,12 +971,12 @@ else
 						History.Remove(node);
 						node = next;
 					}
-					History.AddAfter(CurrentHis, CurrentDir.Value.Key);
+					History.AddAfter(CurrentHis, CurrentDir.First);
 					CurrentHis = CurrentHis.Next;
 				}
 				else
 				{
-					History.AddLast(CurrentDir.Value.Key);
+					History.AddLast(CurrentDir.First);
 					CurrentHis = History.Last;
 				}
 			}
@@ -1002,7 +1002,7 @@ else
 	{
 		if (item.Type == FileType.Directory && !rightclick)
 		{
-			GetDirectory($"{CurrentDir.Value.Key}/{item.Name}");
+			GetDirectory($"{CurrentDir.First}/{item.Name}");
 		}
 		else if (State.Selected == null || !State.Selected.Equals(item))
 		{

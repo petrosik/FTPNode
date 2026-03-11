@@ -296,7 +296,7 @@ namespace WebFTPViewer.Hubs
                         FtpListOption.Modify |
                         FtpListOption.Size |
                         FtpListOption.NoPath | FtpListOption.IncludeSelfAndParent);
-                return JsonSerializer.Serialize(new KeyValuePair<string, List<FtpItemDto>>(wd, items.Select(i => new FtpItemDto
+                return JsonSerializer.Serialize(new Pair<string, List<FtpItemDto>>(wd, items.Select(i => new FtpItemDto
                 {
                     Name = i.Name,
                     Type = Enum.TryParse<FileType>(i.Type.ToString(), out var en) ? en : FileType.Unknown,

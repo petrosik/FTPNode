@@ -12,13 +12,14 @@ namespace WebFTPViewer.Client
             //    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             //    .AddJsonFile($"appsettings.{builder.HostEnvironment.EnvironmentName}.json", optional: true)
             //    .AddEnvironmentVariables();
-            var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
-            ?? throw new InvalidOperationException("ApiBaseUrl not configured");
+            var apiBaseUrl = new Uri(builder.HostEnvironment.BaseAddress);
+            apiBaseUrl = new Uri(apiBaseUrl, "api/");
+            builder.Configuration["ApiBaseUrl"] = apiBaseUrl.ToString();
             builder.Services.AddScoped<AppState>();
             builder.Services.AddScoped(sp =>
             new HttpClient
             {
-                BaseAddress = new Uri(apiBaseUrl)
+                BaseAddress = apiBaseUrl
             });
             await builder.Build().RunAsync();
         }

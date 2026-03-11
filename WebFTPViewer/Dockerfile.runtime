@@ -1,0 +1,9 @@
+﻿# Dockerfile.runtime
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine
+RUN apk add --no-cache openssh
+WORKDIR /app
+EXPOSE 8080
+EXPOSE 8081
+COPY . /app/
+
+ENTRYPOINT ["dotnet","WebFTPViewer.dll"]
