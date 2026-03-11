@@ -1,0 +1,35 @@
+﻿<div style="@Shared.Utils.StyleMerge($"display:flex; z-index:{ZIndex}; background-color:rgba(0,0,0,0.5); position:fixed; top:0; left:0; width:100%; height:100%; justify-content:center; align-items:center;", OuterStyle)"
+	 @onclick="HandleBackgroundClick"
+	 @onkeydown="HandleKeyDown"
+	 tabindex="0"
+	 class="@OuterClass">
+	<div class="@InnerClass" style="@Shared.Utils.StyleMerge($"height:{YPercent}%; width:{XPercent}%; border-radius:10px; display:flex; justify-content:center; align-items:center; flex-direction:column; gap:8%; background-color:white", InnerStyle)"
+		 @onclick:stopPropagation="true">
+		@ChildContent
+	</div>
+</div>
+
+@code {
+	[Parameter] public RenderFragment ChildContent { get; set; } = default!;
+	[Parameter] public EventCallback OnClick { get; set; }
+	[Parameter] public EventCallback<KeyboardEventArgs> OnKey { get; set; }
+	[Parameter] public int XPercent { get; set; } = 50;
+	[Parameter] public int YPercent { get; set; } = 20;
+	[Parameter] public int ZIndex { get; set; } = 2010;
+	[Parameter] public string OuterStyle { get; set; } = string.Empty;
+	[Parameter] public string InnerStyle { get; set; } = string.Empty;
+	[Parameter] public string OuterClass { get; set; } = string.Empty;
+	[Parameter] public string InnerClass { get; set; } = string.Empty;
+
+	private async Task HandleBackgroundClick()
+	{
+		if (OnClick.HasDelegate)
+			await OnClick.InvokeAsync();
+	}
+
+	private async Task HandleKeyDown(KeyboardEventArgs e)
+	{
+		if (OnKey.HasDelegate)
+			await OnKey.InvokeAsync(e);
+	}
+}

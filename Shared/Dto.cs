@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.Security;
 
 namespace Shared
 {
@@ -41,12 +40,12 @@ namespace Shared
         public int Permissions { get; set; }
         public override bool Equals(object? obj)
         {
-            if (obj == null) return false; 
+            if (obj == null) return false;
             if (obj is FtpItemDto dto)
             {
-                if (ReferenceEquals(this, dto)) 
+                if (ReferenceEquals(this, dto))
                     return true;
-                else if (dto.Name == Name && dto.Type == Type && dto.Size == Size && dto.Modified == Modified && dto.Permissions == Permissions) 
+                else if (dto.Name == Name && dto.Type == Type && dto.Size == Size && dto.Modified == Modified && dto.Permissions == Permissions)
                     return true;
             }
             return false;
@@ -61,7 +60,7 @@ namespace Shared
         public string Name { get; set; }
         public long Size { get; set; }
         public int Permissions { get; set; } = 700;
-        public string UploadPath { get; set; } 
+        public string UploadPath { get; set; }
     }
     public class Pair<T1, T2>
     {
@@ -88,7 +87,7 @@ namespace Shared
         public int PublicKeyLength { get; set; }         // e.g., 2048
 
         // Extensions (key usages, SANs, basic constraints, etc.)
-        public List<Pair<string,string>> Extensions { get; set; } = new();
+        public List<Pair<string, string>> Extensions { get; set; } = new();
 
         // Chain elements (intermediate and root certificates)
         public List<CertificateChainElementDto> Chain { get; set; } = new();

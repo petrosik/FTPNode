@@ -82,3 +82,15 @@ window.helpers.finishFileDownload = (fileName) => {
 
     delete window._fileBuffers[fileName];
 };
+window.helpers.cleanupFileChunks = (fileName) => {
+    if (window._fileBuffers && window._fileBuffers[fileName]) {
+        delete window._fileBuffers[fileName];
+    }
+};
+
+window.helpers.getFileBytesFromChunks = async (fileName) => {
+    const chunks = window._fileBuffers[fileName];
+    const blob = new Blob(chunks);
+    const buffer = await blob.arrayBuffer();
+    return new Uint8Array(buffer);
+};

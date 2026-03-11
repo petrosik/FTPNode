@@ -1,12 +1,10 @@
 ﻿using FluentFTP;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.SignalR;
 using Shared;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Runtime.ConstrainedExecution;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
@@ -16,10 +14,7 @@ namespace WebFTPViewer.Hubs
 {
     public class FTPHub : Hub
     {
-        // Store FTP clients per connection
-        // first is upload second is download streams
         private static readonly ConcurrentDictionary<string, FTPStorage> _ftpClients = new();
-        private static readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _pendingCertRequests = new();
         private readonly ISharedStorage _sharedStorage;
 
         public FTPHub(ISharedStorage sharedService)
@@ -46,6 +41,8 @@ namespace WebFTPViewer.Hubs
                 settings.Add(new() { Name = "maxeditsize", Value = val });
             if (_sharedStorage.TryGetArg("disablepermchange", out val))
                 settings.Add(new() { Name = "disablepermchange", Value = val });
+            if (_sharedStorage.TryGetArg("enabledebug", out val))
+                settings.Add(new() { Name = "enabledebug", Value = val });
 
             await Clients.Caller.SendAsync("ReceiveInitData", settings);
             await base.OnConnectedAsync();
@@ -331,6 +328,12 @@ namespace WebFTPViewer.Hubs
             if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
             if (_ftpClients[Context.ConnectionId].MainClient.FileExists(target))
             {
+                //to do: needs to cancel file operations with the file when it gets deleted
+                //through hub send the user the cancel que so the user cancels the file not server
+                //if (_ftpClients[Context.ConnectionId].DownloadQue.ContainsKey(target))
+                //    await DownloadCancel(target);
+                //if (_ftpClients[Context.ConnectionId].UploadQue.ContainsKey(target))
+                //    await UploadCancel(target, true);
                 _ftpClients[Context.ConnectionId].MainClient.DeleteFile(target);
                 return "true";
             }
@@ -378,7 +381,7 @@ namespace WebFTPViewer.Hubs
             if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
             try
             {
-                _ftpClients[Context.ConnectionId].MainClient.Chmod(name,permissons);
+                _ftpClients[Context.ConnectionId].MainClient.Chmod(name, permissons);
             }
             catch (Exception e)
             {

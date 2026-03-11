@@ -82,27 +82,27 @@
             {
                 return true;
             }
-            else if ((action & AllowedAction.Edit) == AllowedAction.Edit && ftpItem.Type != FileType.Directory && ftpItem.Size <=sizeLimit && (perms & UnixPermission.Write) == UnixPermission.Write)
+            else if ((action & AllowedAction.Edit) == AllowedAction.Edit && ftpItem.Type != FileType.Directory && ftpItem.Size <= sizeLimit && (perms & UnixPermission.Write) == UnixPermission.Write)
             {
                 var ext = System.IO.Path.GetExtension(ftpItem.Name).ToLower();
-                if (ext == ".txt"  || 
-                    ext == ".html" || 
-                    ext == ".htm"  || 
-                    ext == ".css"  || 
-                    ext == ".js"   || 
-                    ext == ".json" || 
-                    ext == ".xml"  || 
-                    ext == ".md"   || 
-                    ext == ".csv"  || 
-                    ext == ".log"  || 
-                    ext == ".cfg"  || 
-                    ext == ".ini"  || 
-                    ext == ".bat"  || 
-                    ext == ".sh"   || 
-                    ext == ".py"   || 
-                    ext == ".java" || 
-                    ext == ".c"    || 
-                    ext == ".cpp"  || 
+                if (ext == ".txt" ||
+                    ext == ".html" ||
+                    ext == ".htm" ||
+                    ext == ".css" ||
+                    ext == ".js" ||
+                    ext == ".json" ||
+                    ext == ".xml" ||
+                    ext == ".md" ||
+                    ext == ".csv" ||
+                    ext == ".log" ||
+                    ext == ".cfg" ||
+                    ext == ".ini" ||
+                    ext == ".bat" ||
+                    ext == ".sh" ||
+                    ext == ".py" ||
+                    ext == ".java" ||
+                    ext == ".c" ||
+                    ext == ".cpp" ||
                     ext == ".cs")
                 {
                     return true;
@@ -115,5 +115,29 @@
             return time.ToString("yyyy/MM/dd HH:mm:ss");
         }
         public static int CalcPerm(bool r, bool w, bool x) => (r ? 4 : 0) + (w ? 2 : 0) + (x ? 1 : 0);
+        public static string StyleMerge(params string[] styles)
+        {
+            var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var style in styles)
+            {
+                if (string.IsNullOrWhiteSpace(style)) continue;
+
+                var parts = style.Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var p in parts)
+                {
+                    var kv = p.Split(':', 2, StringSplitOptions.RemoveEmptyEntries);
+                    if (kv.Length == 2)
+                    {
+                        var key = kv[0].Trim();
+                        var value = kv[1].Trim();
+                        dict[key] = value; // override duplicates
+                    }
+                }
+            }
+
+            return string.Join("; ", dict.Select(kv => $"{kv.Key}: {kv.Value}"));
+        }
     }
 }

@@ -68,6 +68,7 @@ Example:
 **Important**
   - Settings must be placed inside the `"FTP"` section.
   - All variables can be passed in as string
+  - All variable names are not case sensitive
 
 ### Variables
 
@@ -91,10 +92,12 @@ Example:
 - **downloadlimit**
   - Type: `number` (in bytes)
   - Default: 131072 (128KB)
+  - Description: Determines each chunk size when downloading
 
 - **uploadlimit**
   - Type: `number` (in bytes)
   - Default: 65536 (64KB)
+  - Description: Determines each chunk size when uploading
 
 - **maxfileuploadsize**
   - Type: `number` (in bytes)
@@ -120,3 +123,7 @@ Example:
   - Type: `bool`
   - Default: false
   - Description: Determines if frontend shows permission change button
+- **enabledebug**
+  - Type: `bool`
+  - Default: false
+  - Description: Determines if frontend prints more detail into console when available

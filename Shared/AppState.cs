@@ -9,7 +9,7 @@
         public event Func<Task>? DownloadClicked;
         public event Action? DeleteClicked;
         public event Func<Task>? PermChangeClicked;
-        public event Action? EditClicked;
+        public event Func<Task>? EditClicked;
         public event Func<Task>? ViewClicked;
         public event Func<Task>? RenameClicked;
         public event Func<Task>? CreateFolderClicked;
@@ -29,8 +29,11 @@
             if (PermChangeClicked is not null)
                 await PermChangeClicked?.Invoke();
         }
-        
-        public void TriggerEdit() => EditClicked?.Invoke();
+        public async Task TriggerEdit()
+        {
+            if (EditClicked is not null)
+                await EditClicked.Invoke();
+        }
         public async Task TriggerView()
         {
             if (ViewClicked is not null)

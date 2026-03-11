@@ -18,5 +18,14 @@
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.csproj" />
   </ItemGroup>
-
+	<ItemGroup Condition="'$(Configuration)'=='Debug'">
+		<None Update="appsettings.Development.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+	<ItemGroup Condition="'$(Configuration)'=='Release'">
+		<None Update="appsettings.Development.json">
+			<CopyToOutputDirectory></CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 </Project>

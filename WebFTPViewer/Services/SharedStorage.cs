@@ -1,6 +1,6 @@
 ﻿namespace WebFTPViewer.Services
 {
-    public class SharedStorage :ISharedStorage
+    public class SharedStorage : ISharedStorage
     {
         private readonly Dictionary<string, object> _args = new();
 

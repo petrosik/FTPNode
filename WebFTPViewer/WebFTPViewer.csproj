@@ -19,5 +19,20 @@
     <ProjectReference Include="..\Shared\Shared.csproj" />
     <ProjectReference Include="..\WebFTPViewer.Client\WebFTPViewer.Client.csproj" />
   </ItemGroup>
-
+  
+ <ItemGroup Condition="'$(Configuration)'=='Debug'">
+  <None Update="appsettings.Development.json">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
+	<ItemGroup Condition="'$(Configuration)'=='Release'">
+		<None Update="appsettings.Development.json">
+			<CopyToOutputDirectory></CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+	<ItemGroup>
+	  <Content Update="appsettings.Development.json">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Content>
+	</ItemGroup>
 </Project>

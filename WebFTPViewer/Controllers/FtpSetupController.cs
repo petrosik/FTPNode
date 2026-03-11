@@ -1,7 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Shared;
-using FluentFTP;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace WebFTPViewer.Controllers
 {
@@ -9,6 +6,6 @@ namespace WebFTPViewer.Controllers
     [ApiController]
     public class FtpSetupController : ControllerBase
     {
-        
+
     }
 }
