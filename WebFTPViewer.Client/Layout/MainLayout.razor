@@ -51,13 +51,13 @@
                 </div>
             }
             <div style="height:100%; display:flex; flex-wrap:nowrap; gap:0.2rem;">
-                <button class="control-button" @onclick="State.TriggerUpload" title="Upload File"><i style="font-size:2rem" class="fa-solid fa-file-arrow-up"></i></button>
-                <button class="control-button" @onclick="State.TriggerCreateFolder" title="Create Folder"><i style="font-size:2rem" class="fa-solid fa-folder-plus"></i></button>
+                <button class="control-button" @onclick="State.TriggerUpload" title="Upload File" disabled="@State.DirectoryLoading"><i style="font-size:2rem" class="fa-solid fa-file-arrow-up"></i></button>
+                <button class="control-button" @onclick="State.TriggerCreateFolder" title="Create Folder" disabled="@State.DirectoryLoading"><i style="font-size:2rem" class="fa-solid fa-folder-plus"></i></button>
             </div>
             <button class="control-button" @onclick="State.TriggerLogout" title="Logout"><i style="font-size:2rem" class="fa-solid fa-right-from-bracket"></i></button>
             <div style="height:100%; display:flex; flex-wrap:nowrap; gap:0.2rem;">
-                <button class="control-button" @onclick="State.TriggerBack" title="Back"><i style="font-size:2rem" class="fa-solid fa-angle-left"></i></button>
-                <button class="control-button" @onclick="State.TriggerForward" title="Forward"><i style="font-size:2rem" class="fa-solid fa-angle-right"></i></button>
+                <button class="control-button" @onclick="State.TriggerBack" title="Back" disabled="@State.DirectoryLoading"><i style="font-size:2rem" class="fa-solid fa-angle-left"></i></button>
+                <button class="control-button" @onclick="State.TriggerForward" title="Forward" disabled="@State.DirectoryLoading"><i style="font-size:2rem" class="fa-solid fa-angle-right"></i></button>
             </div>
         </div>
 

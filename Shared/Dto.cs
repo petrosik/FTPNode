@@ -6,6 +6,12 @@ namespace Shared
     {
         public string Name { get; set; }
         public string Value { get; set; }
+        public Pair(string name, string value)
+        {
+            Name = name;
+            Value = value;
+        }
+        public Pair() { }
     }
     public class LoginJson
     {

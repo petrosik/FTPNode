@@ -71,5 +71,18 @@
         private void NotifyStateChanged() => OnChange?.Invoke();
 
         public Dictionary<string, string> Settings = new();
+        private bool _DirectoryLoading = false;
+        public bool DirectoryLoading
+        {
+            get => _DirectoryLoading;
+            set
+            {
+                if (_DirectoryLoading != value)
+                {
+                    _DirectoryLoading = value;
+                    NotifyStateChanged();
+                }
+            }
+        }
     }
 }

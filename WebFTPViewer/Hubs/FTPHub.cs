@@ -96,7 +96,7 @@ namespace WebFTPViewer.Hubs
             stream.Second.Close();
 
             stream.First.GetReply();
-            clientPair.UploadQue.Remove(name);
+            clientPair.UploadQue.TryRemove(name, out _);
         }
         public async Task UploadCancel(string name, bool autoDelete)
         {
@@ -121,11 +121,14 @@ namespace WebFTPViewer.Hubs
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
-                Console.WriteLine(e.StackTrace);
+                if (_sharedStorage.TryGetArg("enabledebug", out string endebug) && bool.TryParse(endebug, out var val) && val)
+                {
+                    Console.WriteLine(e.StackTrace);
+                }
             }
             finally
             {
-                clientPair.UploadQue.Remove(name);
+                clientPair.UploadQue.TryRemove(name, out _);
             }
         }
         public async Task<string> DownloadStart(string filename, string path)
@@ -191,7 +194,7 @@ namespace WebFTPViewer.Hubs
                 {
                     // End of file reached
                     stream.Second.Dispose();
-                    clientPair.DownloadQue.Remove(name);
+                    clientPair.DownloadQue.TryRemove(name, out _);
                     return new(Array.Empty<byte>(), "true | EOF");
                 }
 
@@ -225,7 +228,7 @@ namespace WebFTPViewer.Hubs
             }
             finally
             {
-                clientPair.DownloadQue.Remove(name);
+                clientPair.DownloadQue.TryRemove(name, out _);
             }
 
             return "true";
@@ -326,14 +329,29 @@ namespace WebFTPViewer.Hubs
         public async Task<string> Delete(string target)
         {
             if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+
+            if (_ftpClients.Any(x => x.Value.DownloadQue.ContainsKey(target) && x.Value.LoginJson.Host == _ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _ftpClients[Context.ConnectionId].LoginJson.Port))
+            {
+                var cancel = _ftpClients.Where(x => x.Value.DownloadQue.ContainsKey(target) && x.Value.LoginJson.Host == _ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _ftpClients[Context.ConnectionId].LoginJson.Port).Select(x => x.Key);
+                foreach (var item in cancel)
+                {
+                    await Clients.Client(item).SendAsync("ForceDownloadCancel", new Pair(target,"Other user has deleted the file"));
+                }
+            }
+            if (_ftpClients.Any(x => x.Value.UploadQue.ContainsKey(target) && x.Value.LoginJson.Host == _ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _ftpClients[Context.ConnectionId].LoginJson.Port))
+            {
+                var cancel = _ftpClients.Where(x => x.Value.UploadQue.ContainsKey(target) && x.Value.LoginJson.Host == _ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _ftpClients[Context.ConnectionId].LoginJson.Port).Select(x => x.Key);
+                foreach (var item in cancel)
+                {
+                    await Clients.Client(item).SendAsync("ForceUploadCancel", new Pair(target, "Other user has deleted the file"));
+                }
+            }
+
+
             if (_ftpClients[Context.ConnectionId].MainClient.FileExists(target))
             {
                 //to do: needs to cancel file operations with the file when it gets deleted
                 //through hub send the user the cancel que so the user cancels the file not server
-                //if (_ftpClients[Context.ConnectionId].DownloadQue.ContainsKey(target))
-                //    await DownloadCancel(target);
-                //if (_ftpClients[Context.ConnectionId].UploadQue.ContainsKey(target))
-                //    await UploadCancel(target, true);
                 _ftpClients[Context.ConnectionId].MainClient.DeleteFile(target);
                 return "true";
             }

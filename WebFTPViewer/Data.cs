@@ -1,5 +1,6 @@
 ﻿using FluentFTP;
 using Shared;
+using System.Collections.Concurrent;
 
 namespace WebFTPViewer
 {
@@ -7,7 +8,7 @@ namespace WebFTPViewer
     {
         public FtpClient MainClient { get; set; }
         public LoginJson LoginJson { get; set; }
-        public Dictionary<string, Pair<FtpClient, Stream>> DownloadQue { get; set; } = new();
-        public Dictionary<string, Pair<FtpClient, Stream>> UploadQue { get; set; } = new();
+        public ConcurrentDictionary<string, Pair<FtpClient, Stream>> DownloadQue { get; set; } = new();
+        public ConcurrentDictionary<string, Pair<FtpClient, Stream>> UploadQue { get; set; } = new();
     }
 }
