@@ -126,4 +126,4 @@ Example:
 - **enabledebug**
   - Type: `bool`
   - Default: false
-  - Description: Determines if frontend prints more detail into console when available
+  - Description: Determines if frontend and backend prints more detail into console when available

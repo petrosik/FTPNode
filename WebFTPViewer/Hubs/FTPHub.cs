@@ -350,8 +350,6 @@ namespace WebFTPViewer.Hubs
 
             if (_ftpClients[Context.ConnectionId].MainClient.FileExists(target))
             {
-                //to do: needs to cancel file operations with the file when it gets deleted
-                //through hub send the user the cancel que so the user cancels the file not server
                 _ftpClients[Context.ConnectionId].MainClient.DeleteFile(target);
                 return "true";
             }

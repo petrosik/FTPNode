@@ -195,7 +195,7 @@
                 {
                     <i class="@v" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
                 }
-                <button class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 10fr 30fr 10fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault>
+                <div class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 10fr 30fr 10fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault>
                     @if (Renaming && State.Selected != null && State.Selected.Equals(item))
                     {
                         <input @ref="renameInput" @bind="NewName" @bind:event="oninput" @onclick:stopPropagation="true" @onmousedown:stopPropagation="true" @onblur="() => { if (Renaming) SaveRename(); }" @onkeydown="HandleKeyDownRename" style="margin-right:10%;" />
@@ -207,7 +207,7 @@
                     <p style="font-weight:bold; margin-right:20%; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color:#707070" : "")" title="@(item.Type == FileType.Directory ? "Not the size of the content" : "")">@item.Size.ToClosestSize()</p>
                     <p style="font-weight:bold; overflow-x:hidden; text-overflow:ellipsis; margin-bottom:0; text-align:left;">@item.Modified.ToSaneString()</p>
                     <p style="font-family: monospace; font-weight:bold; overflow-x:hidden; text-overflow:ellipsis; margin-bottom:0; text-align:left;">@Utils.GetUnixPermissions(item.Permissions)</p>
-                </button>
+                </div>
                 index++;
             }
         </div>
@@ -354,10 +354,11 @@ else
     private string NewName = "";
     private ElementReference renameInput;
     private bool shouldFocus;
-    private bool _renameClosing;
+    private bool _renameFristSelect = false;
     private ElementReference createFolderRef;
     private bool CreateFolderOpen = false;
     private string CreateFolderName = "";
+    private bool _createFolderFirstSelect = false;
     private bool ModWindowOpen = false;
     private bool EditMode = false;
     private string CurrentModFile = "";
@@ -605,6 +606,8 @@ else
         if (!HubGood() || State.Selected == null)
             return;
 
+        NewName = State.Selected.Name;
+        _renameFristSelect = true;
         Renaming = true;
         showMenu = false;
         shouldFocus = true;
@@ -696,6 +699,7 @@ else
     {
         CreateFolderOpen = true;
         CreateFolderName = "New Folder";
+        _createFolderFirstSelect = true;
         StateHasChanged();
     }
     private async Task CreateFolder()
@@ -901,10 +905,19 @@ else
         {
             shouldFocus = false;
             await renameInput.FocusAsync();
+            if (_renameFristSelect){
+                await JS.InvokeVoidAsync("helpers.selectInputText", renameInput);
+                _renameFristSelect = false;
+            }
         }
         if (CreateFolderOpen)
         {
             await createFolderRef.FocusAsync();
+            if (_createFolderFirstSelect)
+            {
+                    _createFolderFirstSelect = false;
+                    await JS.InvokeVoidAsync("helpers.selectInputText", createFolderRef);   
+            }
         }
         await base.OnAfterRenderAsync(firstRender);
     }

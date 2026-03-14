@@ -101,9 +101,30 @@
                     ext == ".sh" ||
                     ext == ".py" ||
                     ext == ".java" ||
+                    ext == ".yml" ||
+                    ext == ".yaml" ||
                     ext == ".c" ||
                     ext == ".cpp" ||
-                    ext == ".cs")
+                    ext == ".cs" ||
+                    ext == ".rb" ||
+                    ext == ".php" ||
+                    ext == ".ts" ||
+                    ext == ".swift" ||
+                    ext == ".go" ||
+                    ext == ".rs" ||
+                    ext == ".ps1" ||
+                    ext == ".vbs" ||
+                    ext == ".toml" ||
+                    ext == ".properties" ||
+                    ext == ".env" ||
+                    ext == ".make" || ext == "Makefile" ||
+                    ext == ".dockerfile" ||
+                    ext == ".conf" ||
+                    ext == ".tex" ||
+                    ext == ".rst" ||
+                    ext == ".adoc" ||
+                    ext == ".out" ||
+                    ext == ".msg")
                 {
                     return true;
                 }

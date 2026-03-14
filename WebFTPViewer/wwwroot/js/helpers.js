@@ -94,3 +94,7 @@ window.helpers.getFileBytesFromChunks = async (fileName) => {
     const buffer = await blob.arrayBuffer();
     return new Uint8Array(buffer);
 };
+
+window.helpers.selectInputText = (element) => {
+    element.select();
+}

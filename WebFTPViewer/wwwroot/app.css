@@ -124,6 +124,8 @@ h1:focus {
     /*    border: 1px solid #bbb;*/
     cursor: pointer;
     transition: background 0.3s, border 0.3s;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
 }
 
     .button-light:hover {
@@ -139,6 +141,8 @@ h1:focus {
     /*    border: 1px solid #888;*/
     cursor: pointer;
     transition: background 0.3s, border 0.3s;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
 }
 
     .button-dark:hover {
@@ -148,6 +152,8 @@ h1:focus {
 .button-selected {
     background-color: #82e5ff;
     color: #111;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
 }
 
 .control-button {
