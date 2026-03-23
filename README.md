@@ -104,6 +104,11 @@ Example:
   - Default: 536870912000 (500GB)
   - Description: Maximum file size allowed by the frontend
 
+- **maxfileuploadatonce**
+  - Type: `number`
+  - Default: 30
+  - Description: Maximum number of files that can be selected in a single file picker dialog
+
 - **autodelete**
   - Type: `bool`
   - Default: true
@@ -123,7 +128,14 @@ Example:
   - Type: `bool`
   - Default: false
   - Description: Determines if frontend shows permission change button
+  
 - **enabledebug**
   - Type: `bool`
   - Default: false
   - Description: Determines if frontend and backend prints more detail into console when available
+  
+- **sizeunitformat**
+  - Type: `string[]`
+  - Default: ["B", "KB", "MB", "GB", "TB", "PB"]
+  - Description: Defines the display labels for each size unit
+  - Note: Additional values can be provided to support larger units.

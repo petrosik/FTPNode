@@ -1,4 +1,6 @@
-﻿namespace Shared
+﻿using System.Text.Json;
+
+namespace Shared
 {
     public static class Utils
     {
@@ -42,16 +44,20 @@
 
             return new string(result); // e.g., "rwxr-xr-x"
         }
-
-        public static double ToKB(this long bytes) => bytes / 1024.0;
-        public static double ToMB(this long bytes) => bytes / (1024.0 * 1024.0);
-        public static double ToGB(this long bytes) => bytes / (1024.0 * 1024.0 * 1024.0);
-        public static string ToClosestSize(this long bytes)
+        public static string ToClosestSize(this long bytes, string? overrideunits = null)
         {
             if (bytes < 0)
                 throw new ArgumentOutOfRangeException(nameof(bytes));
 
-            string[] units = { "B", "KB", "MB", "GB", "TB", "PB" };
+            string[] units = ["B", "KB", "MB", "GB", "TB", "PB"];
+            if (!string.IsNullOrWhiteSpace(overrideunits))
+            {
+                try
+                {
+                    units = JsonSerializer.Deserialize<string[]>(overrideunits) ?? units;
+                }
+                catch { }
+            }
             double size = bytes;
             int unitIndex = 0;
 
@@ -67,7 +73,11 @@
         public static bool AllowedActions(this FtpItemDto ftpItem, AllowedAction action, long sizeLimit = 1048576)
         {
             var perms = GetPermissions(ftpItem.Permissions, PermissionScope.Owner);
-            if (((action & AllowedAction.Read) == AllowedAction.Read || (action & AllowedAction.Download) == AllowedAction.Download) && (perms & UnixPermission.Read) == UnixPermission.Read)
+            if (((action & AllowedAction.Read) == AllowedAction.Read) && (perms & UnixPermission.Read) == UnixPermission.Read)
+            {
+                return true;
+            }
+            else if ((action & AllowedAction.Download) == AllowedAction.Download && ftpItem.Type != FileType.Directory && (perms & UnixPermission.Read) == UnixPermission.Read)
             {
                 return true;
             }

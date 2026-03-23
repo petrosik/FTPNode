@@ -96,7 +96,7 @@
                 <i class="fa-solid fa-arrow-turn-up" style="color:lightcoral; font-size:1rem; display:flex; align-items:center; justify-content:center;"></i>
                 <i class="fa-regular fa-file" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
                 <h4 style="margin:0; text-wrap-mode:nowrap;text-overflow:ellipsis; overflow:hidden;" title="@item.Value.Name">@item.Value.Name</h4>
-                <button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress}%")" @onclick="@(async () => { UploadQue.Remove(item.Key); if (UploadQue.Count == 0) { UploadRunning = false; await PreventClosing(UploadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
+                <button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress.ToString("F2")}%")" @onclick="@(async () => { UploadQue.Remove(item.Key); if (UploadQue.Count == 0) { UploadRunning = false; await PreventClosing(UploadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
                     @if (item.Value.Proggress < 100)
                     {
                         <svg viewBox="0 0 100 100" style="width:100%; height:100%; position:absolute; top:0; left:0; transform:rotate(-90deg);">
@@ -124,7 +124,7 @@
                 <i class="fa-solid fa-arrow-turn-down" style="color:lightblue; font-size:1rem; display:flex; align-items:center; justify-content:center;"></i>
                 <i class="fa-regular fa-file" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
                 <h4 style="margin:0; text-wrap-mode:nowrap;text-overflow:ellipsis; overflow:hidden;" title="@item.Value.Name">@item.Value.Name</h4>
-                <button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress}%")" @onclick="@(async () => { DownloadQue.Remove(item.Key); if (DownloadQue.Count == 0 && UploadQue.Count == 0) { DownloadRunning = false; await PreventClosing(DownloadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
+                <button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress.ToString("F2")}%")" @onclick="@(async () => { DownloadQue.Remove(item.Key); if (DownloadQue.Count == 0 && UploadQue.Count == 0) { DownloadRunning = false; await PreventClosing(DownloadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
                     @if (item.Value.Proggress < 100)
                     {
                         <svg viewBox="0 0 100 100" style="width:100%; height:100%; position:absolute; top:0; left:0; transform:rotate(-90deg);">
@@ -195,7 +195,7 @@
                 {
                     <i class="@v" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
                 }
-                <div class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 10fr 30fr 10fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault>
+                <div class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 10fr 30fr 10fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault @onclick:stopPropagation="true">
                     @if (Renaming && State.Selected != null && State.Selected.Equals(item))
                     {
                         <input @ref="renameInput" @bind="NewName" @bind:event="oninput" @onclick:stopPropagation="true" @onmousedown:stopPropagation="true" @onblur="() => { if (Renaming) SaveRename(); }" @onkeydown="HandleKeyDownRename" style="margin-right:10%;" />
@@ -204,7 +204,7 @@
                     {
                         <p style="font-weight:bold; margin-bottom:0; text-align:left; overflow-x:hidden; text-overflow:ellipsis;" title="@item.Name">@item.Name</p>
                     }
-                    <p style="font-weight:bold; margin-right:20%; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color:#707070" : "")" title="@(item.Type == FileType.Directory ? "Not the size of the content" : "")">@item.Size.ToClosestSize()</p>
+                    <p style="font-weight:bold; margin-right:20%; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color:#707070" : "")" title="@(item.Type == FileType.Directory ? "Not the size of the content" : "")">@item.Size.ToClosestSize(State.Settings.TryGetValue("sizeunitformat", out var format)?format:null)</p>
                     <p style="font-weight:bold; overflow-x:hidden; text-overflow:ellipsis; margin-bottom:0; text-align:left;">@item.Modified.ToSaneString()</p>
                     <p style="font-family: monospace; font-weight:bold; overflow-x:hidden; text-overflow:ellipsis; margin-bottom:0; text-align:left;">@Utils.GetUnixPermissions(item.Permissions)</p>
                 </div>
@@ -380,12 +380,27 @@ else
     {
         if (!HubGood()) return;
 
+        var limit = 30;
+        if (State.Settings.TryGetValue("maxfileuploadatonce", out var lim) && int.TryParse(lim, out limit)) { }
         isDragging = false;
+
+        if (e.FileCount > limit)
+        {
+            Error = $"The number of files exceeded limit ({limit})";
+            StateHasChanged();
+            return;
+        }
+
         UploadRunning = true;
         await PreventClosing(UploadRunning);
         StateHasChanged();
-        var rofiles = e.GetMultipleFiles();
+        var rofiles = e.GetMultipleFiles(limit);
         var files = new List<IBrowserFile>();
+
+        var maxFileSize = 1024L * 1024 * 1024 * 500;
+        if (State.Settings.TryGetValue("maxfileuploadsize", out var max) && long.TryParse(max, out var maxLim))
+            maxFileSize = maxLim;
+
         foreach (var file in rofiles)
         {
             if (UploadQue.TryGetValue(file.Name, out var queueItem) && queueItem.Proggress == 100)
@@ -398,6 +413,13 @@ else
                 StateHasChanged();
                 continue;
             }
+            if (file.Size > maxFileSize)
+            {
+                Error = $"File '{file.Name}' is over the size limit ({maxFileSize.ToClosestSize(State.Settings.TryGetValue("sizeunitformat", out var format) ? format : null)})";
+                StateHasChanged();
+                continue;
+            }
+
             if (!UploadQue.TryAdd(file.Name, new UploadQueItemDto(file.Name, 0))) continue;
             files.Add(file);
         }
@@ -588,6 +610,11 @@ else
     }
     private async void Logout()
     {
+        UploadQue.Clear();
+        DownloadQue.Clear();
+        DownloadRunning = false;
+        UploadRunning = false;
+        await PreventClosing(false);
         await ClearHubConn();
         LoggedIn = false;
         Loading = true;
@@ -635,6 +662,11 @@ else
             Renaming = false;
             NewName = "";
         }
+
+        if (e.Key == "Space" && (NewName.StartsWith(' ') || NewName.EndsWith(' ')))
+        {
+            NewName = NewName.Trim();  
+        }
     }
     private async Task View()
     {
@@ -667,6 +699,20 @@ else
     {
         if (!HubGood())
             return;
+
+        var filename = $"{CurrentModFile}.tmp";
+        if (UploadQue.TryGetValue(filename, out var queueItem) && queueItem.Proggress == 100)
+        {
+            UploadQue.Remove(filename);
+        }
+        else if (UploadQue.ContainsKey(filename))
+        {
+            Error = $"File with the same name '{filename}' is already being uploaded";
+            StateHasChanged();
+            return;
+        }
+
+        if (!UploadQue.TryAdd(filename, new UploadQueItemDto(filename, 0))) return;
         await UploadRoutine(new InMemoryBrowserFile(encodings[selectedEncoding].GetBytes(CurrentModFileContent), $"{CurrentModFile}.tmp", "text/plain"));
         var res = await Hub.InvokeAsync<string>("Delete", CurrentModFile);
         if (CheckReturn(res))
@@ -708,6 +754,17 @@ else
             return;
 
         string result;
+        if (CreateFolderName.StartsWith(' ') || CreateFolderName.EndsWith(' '))
+        {
+            CreateFolderName = CreateFolderName.Trim();
+        }
+        if (CurrentDir.Second.Any(x => x.Name == CreateFolderName))
+        {
+            Error = $"Folder with name '{CreateFolderName}' already exists";
+            StateHasChanged();
+            return;
+        }
+
         if (State.Selected != null && State.Selected.Type == FileType.Directory)
         {
             result = await Hub.InvokeAsync<string>("CreateFolder", $"{State.Selected.Name}/{CreateFolderName}");
@@ -1036,10 +1093,6 @@ else
         else if (State.Selected == null || !State.Selected.Equals(item))
         {
             State.Selected = item;
-        }
-        else
-        {
-            State.Selected = null;
         }
     }
     private async Task ClearHubConn()

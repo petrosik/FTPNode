@@ -1,4 +1,5 @@
 using Shared;
+using System.Text.Json;
 using WebFTPViewer.Components;
 using WebFTPViewer.Hubs;
 using WebFTPViewer.Services;
@@ -78,10 +79,42 @@ namespace WebFTPViewer
             {
                 foreach (var item in ftpsettings.GetChildren())
                 {
-                    sharedService.SetArg(item.Key.ToLower(), item.Value.ToString());
+                    if (item.GetChildren().Any())
+                    {
+                        var dict = ToDictionary(item);
+                        var json = JsonSerializer.Serialize(dict);
+
+                        sharedService.SetArg(item.Key.ToLower(), json);
+                    }
+                    else
+                    {
+                        sharedService.SetArg(item.Key.ToLower(), item.Value?.ToString());
+                    }
                 }
             }
             app.Run();
+        }
+        private static object ToDictionary(IConfigurationSection section)
+        {
+            var children = section.GetChildren().ToList();
+
+            if (!children.Any())
+                return section.Value;
+
+            // Detect array (numeric keys)
+            if (children.All(c => int.TryParse(c.Key, out _)))
+            {
+                return children
+                    .OrderBy(c => int.Parse(c.Key))
+                    .Select(ToDictionary)
+                    .ToList();
+            }
+
+            // Otherwise object
+            return children.ToDictionary(
+                c => c.Key,
+                c => ToDictionary(c)
+            );
         }
     }
 }
