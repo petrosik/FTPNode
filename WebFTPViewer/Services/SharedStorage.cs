@@ -1,8 +1,11 @@
-﻿namespace WebFTPViewer.Services
+﻿using System.Collections.Concurrent;
+
+namespace WebFTPViewer.Services
 {
     public class SharedStorage : ISharedStorage
     {
         private readonly Dictionary<string, object> _args = new();
+        public ConcurrentDictionary<string, FTPStorage> _ftpClients { get; } = new();
 
         public void SetArg(string key, object value)
         {

@@ -14,7 +14,6 @@ namespace WebFTPViewer.Hubs
 {
     public class FTPHub : Hub
     {
-        private static readonly ConcurrentDictionary<string, FTPStorage> _ftpClients = new();
         private readonly ISharedStorage _sharedStorage;
 
         public FTPHub(ISharedStorage sharedService)
@@ -44,13 +43,15 @@ namespace WebFTPViewer.Hubs
             if (_sharedStorage.TryGetArg("enabledebug", out val))
                 settings.Add(new() { Name = "enabledebug", Value = val });
 
+            settings.Add(new() { Name = "version", Value = typeof(FTPHub).Assembly.GetName().Version.ToString() });
+
             await Clients.Caller.SendAsync("ReceiveInitData", settings);
             await base.OnConnectedAsync();
         }
 
         public async Task<string> UploadChunk(UploadMetadataDto metadata, byte[] chunk, long offset)
         {
-            var clientPair = _ftpClients[Context.ConnectionId];
+            var clientPair = _sharedStorage._ftpClients[Context.ConnectionId];
 
             // Dictionary: name -> IFtpStream
 
@@ -88,7 +89,7 @@ namespace WebFTPViewer.Hubs
 
         public async Task UploadFinish(string name)
         {
-            var clientPair = _ftpClients[Context.ConnectionId];
+            var clientPair = _sharedStorage._ftpClients[Context.ConnectionId];
 
             if (!clientPair.UploadQue.TryGetValue(name, out var stream))
                 return;
@@ -100,7 +101,7 @@ namespace WebFTPViewer.Hubs
         }
         public async Task UploadCancel(string name, bool autoDelete)
         {
-            if (!_ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
+            if (!_sharedStorage._ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
             {
                 Console.WriteLine("Upload Cancel | Error ftpClients don't contain connection ID");
                 return;
@@ -133,7 +134,7 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> DownloadStart(string filename, string path)
         {
-            if (!_ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
+            if (!_sharedStorage._ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
                 return "false | Error: FTP client not found.";
 
             if (clientPair.DownloadQue.ContainsKey(filename))
@@ -157,7 +158,7 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<Pair<byte[]?, string>> DownloadChunk(string name, long offset)
         {
-            if (!_ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
+            if (!_sharedStorage._ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
                 return new(null, "false | FTP client not found");
 
             if (!clientPair.DownloadQue.TryGetValue(name, out var stream))
@@ -211,7 +212,7 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> DownloadCancel(string name)
         {
-            if (!_ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
+            if (!_sharedStorage._ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
                 return "false | Error: FTP client not found.";
 
             if (!clientPair.DownloadQue.TryGetValue(name, out var stream))
@@ -236,7 +237,7 @@ namespace WebFTPViewer.Hubs
 
         public override async Task OnDisconnectedAsync(Exception exception)
         {
-            if (_ftpClients.TryRemove(Context.ConnectionId, out var ftpClient))
+            if (_sharedStorage._ftpClients.TryRemove(Context.ConnectionId, out var ftpClient))
             {
                 if (ftpClient.UploadQue.Count != 0)
                 {
@@ -279,7 +280,7 @@ namespace WebFTPViewer.Hubs
                 {
                     return ftpClient.Second;
                 }
-                _ftpClients[Context.ConnectionId] = new() { MainClient = ftpClient.First, LoginJson = info };
+                _sharedStorage._ftpClients[Context.ConnectionId] = new() { MainClient = ftpClient.First, LoginJson = info };
                 return true.ToString();
             }
             catch (Exception ex)
@@ -290,11 +291,11 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> GetCurrentDirectory()
         {
-            if (!_ftpClients.ContainsKey(Context.ConnectionId)) return null;
+            if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return null;
             try
             {
-                var wd = _ftpClients[Context.ConnectionId].MainClient.GetWorkingDirectory();
-                FtpListItem[] items = _ftpClients[Context.ConnectionId].MainClient.GetListing(
+                var wd = _sharedStorage._ftpClients[Context.ConnectionId].MainClient.GetWorkingDirectory();
+                FtpListItem[] items = _sharedStorage._ftpClients[Context.ConnectionId].MainClient.GetListing(
                         wd,
                         FtpListOption.Modify |
                         FtpListOption.Size |
@@ -315,10 +316,10 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<bool> Goto(string targetPath)
         {
-            if (!_ftpClients.ContainsKey(Context.ConnectionId)) return false;
-            if (_ftpClients[Context.ConnectionId].MainClient.DirectoryExists(targetPath))
+            if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return false;
+            if (_sharedStorage._ftpClients[Context.ConnectionId].MainClient.DirectoryExists(targetPath))
             {
-                _ftpClients[Context.ConnectionId].MainClient.SetWorkingDirectory(targetPath);
+                _sharedStorage._ftpClients[Context.ConnectionId].MainClient.SetWorkingDirectory(targetPath);
                 return true;
             }
             else
@@ -328,19 +329,19 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> Delete(string target)
         {
-            if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+            if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
 
-            if (_ftpClients.Any(x => x.Value.DownloadQue.ContainsKey(target) && x.Value.LoginJson.Host == _ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _ftpClients[Context.ConnectionId].LoginJson.Port))
+            if (_sharedStorage._ftpClients.Any(x => x.Value.DownloadQue.ContainsKey(target) && x.Value.LoginJson.Host == _sharedStorage._ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _sharedStorage._ftpClients[Context.ConnectionId].LoginJson.Port))
             {
-                var cancel = _ftpClients.Where(x => x.Value.DownloadQue.ContainsKey(target) && x.Value.LoginJson.Host == _ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _ftpClients[Context.ConnectionId].LoginJson.Port).Select(x => x.Key);
+                var cancel = _sharedStorage._ftpClients.Where(x => x.Value.DownloadQue.ContainsKey(target) && x.Value.LoginJson.Host == _sharedStorage._ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _sharedStorage._ftpClients[Context.ConnectionId].LoginJson.Port).Select(x => x.Key);
                 foreach (var item in cancel)
                 {
                     await Clients.Client(item).SendAsync("ForceDownloadCancel", new Pair(target,"Other user has deleted the file"));
                 }
             }
-            if (_ftpClients.Any(x => x.Value.UploadQue.ContainsKey(target) && x.Value.LoginJson.Host == _ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _ftpClients[Context.ConnectionId].LoginJson.Port))
+            if (_sharedStorage._ftpClients.Any(x => x.Value.UploadQue.ContainsKey(target) && x.Value.LoginJson.Host == _sharedStorage._ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _sharedStorage._ftpClients[Context.ConnectionId].LoginJson.Port))
             {
-                var cancel = _ftpClients.Where(x => x.Value.UploadQue.ContainsKey(target) && x.Value.LoginJson.Host == _ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _ftpClients[Context.ConnectionId].LoginJson.Port).Select(x => x.Key);
+                var cancel = _sharedStorage._ftpClients.Where(x => x.Value.UploadQue.ContainsKey(target) && x.Value.LoginJson.Host == _sharedStorage._ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _sharedStorage._ftpClients[Context.ConnectionId].LoginJson.Port).Select(x => x.Key);
                 foreach (var item in cancel)
                 {
                     await Clients.Client(item).SendAsync("ForceUploadCancel", new Pair(target, "Other user has deleted the file"));
@@ -348,14 +349,14 @@ namespace WebFTPViewer.Hubs
             }
 
 
-            if (_ftpClients[Context.ConnectionId].MainClient.FileExists(target))
+            if (_sharedStorage._ftpClients[Context.ConnectionId].MainClient.FileExists(target))
             {
-                _ftpClients[Context.ConnectionId].MainClient.DeleteFile(target);
+                _sharedStorage._ftpClients[Context.ConnectionId].MainClient.DeleteFile(target);
                 return "true";
             }
-            else if (_ftpClients[Context.ConnectionId].MainClient.DirectoryExists(target))
+            else if (_sharedStorage._ftpClients[Context.ConnectionId].MainClient.DirectoryExists(target))
             {
-                _ftpClients[Context.ConnectionId].MainClient.DeleteDirectory(target);
+                _sharedStorage._ftpClients[Context.ConnectionId].MainClient.DeleteDirectory(target);
                 return "true";
             }
             else
@@ -367,10 +368,10 @@ namespace WebFTPViewer.Hubs
         {
             try
             {
-                if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+                if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
                 if (string.IsNullOrWhiteSpace(dest)) return "false | Empty New Name";
 
-                _ftpClients[Context.ConnectionId].MainClient.Rename(from, dest);
+                _sharedStorage._ftpClients[Context.ConnectionId].MainClient.Rename(from, dest);
                 return "true";
             }
             catch (Exception e)
@@ -382,10 +383,10 @@ namespace WebFTPViewer.Hubs
         {
             try
             {
-                if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+                if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
                 if (string.IsNullOrWhiteSpace(name)) return "false | Empty New Name";
 
-                return _ftpClients[Context.ConnectionId].MainClient.CreateDirectory(name).ToString();
+                return _sharedStorage._ftpClients[Context.ConnectionId].MainClient.CreateDirectory(name).ToString();
             }
             catch (Exception e)
             {
@@ -394,10 +395,10 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> ChangePermisson(string name, int permissons)
         {
-            if (!_ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+            if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
             try
             {
-                _ftpClients[Context.ConnectionId].MainClient.Chmod(name, permissons);
+                _sharedStorage._ftpClients[Context.ConnectionId].MainClient.Chmod(name, permissons);
             }
             catch (Exception e)
             {
