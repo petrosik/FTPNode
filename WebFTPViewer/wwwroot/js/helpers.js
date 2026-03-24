@@ -98,3 +98,30 @@ window.helpers.getFileBytesFromChunks = async (fileName) => {
 window.helpers.selectInputText = (element) => {
     element.select();
 }
+
+window.helpers.encryptPasswordWithPublicKey = async (password, base64Key) => {
+    const keyBytes = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey(
+        "spki",
+        keyBytes.buffer,
+        {
+            name: "RSA-OAEP",
+            hash: "SHA-256"
+        },
+        true,
+        ["encrypt"]
+    );
+
+    const enc = new TextEncoder();
+    const encrypted = await crypto.subtle.encrypt(
+        { name: "RSA-OAEP" },
+        key,
+        enc.encode(password)
+    );
+
+    // Convert encrypted ArrayBuffer to Base64
+    let binary = '';
+    let bytes = new Uint8Array(encrypted);
+    bytes.forEach(b => binary += String.fromCharCode(b));
+    return btoa(binary);
+}

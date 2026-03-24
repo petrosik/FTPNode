@@ -34,8 +34,7 @@ namespace WebFTPViewer.Hubs
                 if (_sharedStorage.TryGetArg(item, out string val))
                     settings.Add(new() { Name = item, Value = val });
             }
-
-            //settings.Add(new() { Name = "version", Value = typeof(FTPHub).Assembly.GetName().Version.ToString() });
+            settings.Add(new() { Name = "publickey", Value = _sharedStorage.PublicKey });
 
             await Clients.Caller.SendAsync("ReceiveInitData", settings);
             await base.OnConnectedAsync();
@@ -438,7 +437,7 @@ namespace WebFTPViewer.Hubs
                 var autovalid = _sharedStorage.TryGetArg<string>("validateanycertificate", out var v) && bool.TryParse(v, out var val) ? val : false;
 
                 // Create and connect FTP client when SignalR client connects
-                var ftpClient = new FtpClient(info.Host, new NetworkCredential(info.Username, info.Password), info.Port)
+                var ftpClient = new FtpClient(info.Host, new NetworkCredential(info.Username,UTF8Encoding.UTF8.GetString(_sharedStorage.Decrypt(Convert.FromBase64String(info.Password)))), info.Port)
                 {
                     Config = new FtpConfig
                     {
