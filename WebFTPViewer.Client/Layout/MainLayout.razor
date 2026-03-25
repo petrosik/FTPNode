@@ -54,7 +54,9 @@
                 <button class="control-button" @onclick="State.TriggerUpload" title="Upload File" disabled="@State.DirectoryLoading"><i style="font-size:2rem" class="fa-solid fa-file-arrow-up"></i></button>
                 <button class="control-button" @onclick="State.TriggerCreateFolder" title="Create Folder" disabled="@State.DirectoryLoading"><i style="font-size:2rem" class="fa-solid fa-folder-plus"></i></button>
             </div>
-            <button class="control-button" @onclick="State.TriggerLogout" title="Logout"><i style="font-size:2rem" class="fa-solid fa-right-from-bracket"></i></button>
+            <ConfirmButton class="control-button" title="Logout" OnClick="State.TriggerLogout" DialogQuestion="Are you sure you want to Log out?">
+                <i style="font-size:2rem" class="fa-solid fa-right-from-bracket"></i>
+            </ConfirmButton>
             <div style="height:100%; display:flex; flex-wrap:nowrap; gap:0.2rem;">
                 <button class="control-button" @onclick="State.TriggerBack" title="Back" disabled="@State.DirectoryLoading"><i style="font-size:2rem" class="fa-solid fa-angle-left"></i></button>
                 <button class="control-button" @onclick="State.TriggerForward" title="Forward" disabled="@State.DirectoryLoading"><i style="font-size:2rem" class="fa-solid fa-angle-right"></i></button>
