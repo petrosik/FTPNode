@@ -12,37 +12,37 @@
             @if (State.Selected != null)
             {
                 <div style="height:100%; display:flex; gap:0.2rem; width:fit-content;">
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Delete))
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Delete,text: out _))
                     {
                         <ConfirmButton class="control-button" title="Delete Selected" DialogQuestion="@($"Are you sure you want to delete {State.Selected.Name}?")" OnClick="State.TriggerDelete">
                             <i style="font-size:2rem" class="fa-solid fa-trash-can"></i>
                         </ConfirmButton>
                     }
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Edit, State.Settings.TryGetValue("maxeditsize", out var maxedits) && int.TryParse(maxedits, out var maxe) ? maxe : 1048576))
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Edit, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out var maxedits) && int.TryParse(maxedits, out var maxe) ? maxe : 1048576))
                     {
                         <button class="control-button" title="Edit" @onclick="State.TriggerEdit">
                             <i style="font-size:2rem" class="fa-solid fa-pen-to-square"></i>
                         </button>
                     }
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Edit) && Utils.AllowedActions(State.Selected, AllowedAction.Read))
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Read, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out maxedits) && int.TryParse(maxedits, out maxe) ? maxe : 1048576))
                     {
                         <button class="control-button" title="View" @onclick="State.TriggerView">
                             <i style="font-size:2rem" class="fa-solid fa-expand"></i>
                         </button>
                     }
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions) && (!State.Settings.TryGetValue("disablepermchange", out var allow) || !bool.TryParse(allow, out var val) || !val))
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions, text: out _) && (!State.Settings.TryGetValue("disablepermchange", out var allow) || !bool.TryParse(allow, out var val) || !val))
                     {
                         <button class="control-button" title="Permission Change" @onclick="State.TriggerPermChange">
                             <i style="font-size:2rem" class="fa-solid fa-unlock-keyhole"></i>
                         </button>
                     }
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Download))
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Download, text: out _))
                     {
                         <button class="control-button" title="Download" @onclick="State.TriggerDownload">
                             <i style="font-size:2rem" class="fa-solid fa-download"></i>
                         </button>
                     }
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Rename))
+                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Rename, text: out _))
                     {
                         <button class="control-button" title="Rename" @onclick="State.TriggerRename">
                             <i style="font-size:2rem" class="fa-solid fa-i"></i>

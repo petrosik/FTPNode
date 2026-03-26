@@ -5,7 +5,6 @@
 @using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 @using System.Text.Json;
 @using System.Text
-@using System.Security.Cryptography
 @using WebFTPViewer.Client.Components;
 @page "/"
 @page "/{*path}"
@@ -18,1254 +17,1338 @@
 
 @if (!LoggedIn)
 {
-	//use overlaywindow later
-	<div style="width:100vw; height:100vh; background-color:rgba(0,0,0,0.3	); position:absolute; top:0; left:0; z-index:2050; display:flex; justify-content:center; align-items:center">
-		<div style="background-color:white; border-radius:5px; min-width: 95%;width:65%; height:65%; display:flex; align-items:center;flex-direction:column">
-			<h2 style="font-weight:bold; padding:1%; height:auto; margin:0;">Login</h2>
-			@if (!Loading)
-			{
-				<form @onsubmit="OnLogin" style="display:flex;flex-direction:column; align-items:center; gap:2vh; height:auto; margin:2%">
-					<div style="display:grid; grid-template-columns:10fr 90fr; align-items:center; gap:1%;">
-						@if (!State.Settings.ContainsKey("host"))
-						{
-							<p style="margin:0">
-								Host:
-							</p>
-							<InputText @bind-value=LoginStuff.Host placeholder="10.0.0.0 or example.com" />
-						}
-						@if (!State.Settings.ContainsKey("port"))
-						{
-							<p style="margin:0">
-								Port:
-							</p>
-							<InputNumber @bind-value=LoginStuff.Port placeholder="21" />
-						}
-						<p style="margin:0">
-							Username:
-						</p>
-						<InputText @bind-value=LoginStuff.Username />
-						<p style="margin:0">
-							Password:
-						</p>
-						<InputText @bind-Value="LoginStuff.Password" type="@(ShowPass ? "text" : "password")" />
-					</div>
-					<div style="display:flex; flex-direction:row; justify-content:space-between; gap:10vw">
-						<div style="display:flex; flex-direction:column; justify-content:space-between;gap:2vh">
-							<label>
-								Remember Me:
-								<InputCheckbox @bind-Value=RememberMe.RememberMe @oninput=OnRememberChange />
-							</label>
-							@if (!State.Settings.ContainsKey("passivemode"))
-							{
-								<label>
-									Passive Mode:
-									<InputCheckbox @bind-Value=RememberMe.PassiveMode />
-								</label>
-							}
-						</div>
-						<label>
-							Show Password:
-							<InputCheckbox @bind-Value=ShowPass />
-						</label>
-					</div>
-					@if (Connecting)
-					{
-						<div style="height:5vh;" class="spinner"></div>
-					}
-					else
-					{
-						<button type="submit">
-							Login
-						</button>
-					}
-				</form>
-			}
-			else
-			{
-				<div class="spinner"></div>
-			}
-			<div>
-				<p style="color:red;">@Error</p>
-			</div>
-		</div>
-	</div>
+    //use overlaywindow later
+    <div style="width:100vw; height:100vh; background-color:rgba(0,0,0,0.3	); position:absolute; top:0; left:0; z-index:2050; display:flex; justify-content:center; align-items:center">
+        <div style="background-color:white; border-radius:5px; min-width: 95%;width:65%; height:65%; display:flex; align-items:center;flex-direction:column">
+            <h2 style="font-weight:bold; padding:1%; height:auto; margin:0;">Login</h2>
+            @if (!Loading)
+            {
+                <form @onsubmit="OnLogin" style="display:flex;flex-direction:column; align-items:center; gap:2vh; height:auto; margin:2%">
+                    <div style="display:grid; grid-template-columns:10fr 90fr; align-items:center; gap:1%;">
+                        @if (!State.Settings.ContainsKey("host"))
+                        {
+                            <p style="margin:0">
+                                Host:
+                            </p>
+                            <InputText @bind-value=LoginStuff.Host placeholder="10.0.0.0 or example.com" />
+                        }
+                        @if (!State.Settings.ContainsKey("port"))
+                        {
+                            <p style="margin:0">
+                                Port:
+                            </p>
+                            <InputNumber @bind-value=LoginStuff.Port placeholder="21" />
+                        }
+                        <p style="margin:0">
+                            Username:
+                        </p>
+                        <InputText @bind-value=LoginStuff.Username />
+                        <p style="margin:0">
+                            Password:
+                        </p>
+                        <InputText @bind-Value="LoginStuff.Password" type="@(ShowPass ? "text" : "password")" />
+                    </div>
+                    <div style="display:flex; flex-direction:row; justify-content:space-between; gap:10vw">
+                        <div style="display:flex; flex-direction:column; justify-content:space-between;gap:2vh">
+                            <label>
+                                Remember Me:
+                                <InputCheckbox @bind-Value=RememberMe.RememberMe @oninput=OnRememberChange />
+                            </label>
+                            @if (!State.Settings.ContainsKey("passivemode"))
+                            {
+                                <label>
+                                    Passive Mode:
+                                    <InputCheckbox @bind-Value=RememberMe.PassiveMode />
+                                </label>
+                            }
+                        </div>
+                        <label>
+                            Show Password:
+                            <InputCheckbox @bind-Value=ShowPass />
+                        </label>
+                    </div>
+                    @if (Connecting)
+                    {
+                        <div style="height:5vh;" class="spinner"></div>
+                    }
+                    else
+                    {
+                        <button type="submit">
+                            Login
+                        </button>
+                    }
+                </form>
+            }
+            else
+            {
+                <div class="spinner"></div>
+            }
+            <div>
+                <p style="color:red;">@Error</p>
+            </div>
+        </div>
+    </div>
 }
 @if (UploadRunning || DownloadRunning || UploadQue.Count > 0 || DownloadQue.Count > 0)
 {
-	<div style="overflow-y:auto;padding:2vh;z-index:2010; display:flex; flex-direction:column; position:fixed; right:2vh; bottom:2vh; width:25vw; height:20vh; min-width:250px; min-height:50px; box-shadow:2px 2px 10px rgba(0,0,0,0.5); border-radius:4px">
-		@foreach (var item in UploadQue)
-		{
-			<div style="display:grid; grid-template-columns:10fr 10fr 80fr 10fr">
-				<i class="fa-solid fa-arrow-turn-up" style="color:lightcoral; font-size:1rem; display:flex; align-items:center; justify-content:center;"></i>
-				<i class="fa-regular fa-file" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
-				<h4 style="margin:0; text-wrap-mode:nowrap;text-overflow:ellipsis; overflow:hidden;" title="@item.Value.Name">@item.Value.Name</h4>
-				<button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress.ToString("F2")}%")" @onclick="@(async () => { UploadQue.Remove(item.Key); if (UploadQue.Count == 0) { UploadRunning = false; await PreventClosing(UploadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
-					@if (item.Value.Proggress < 100)
-					{
-						<svg viewBox="0 0 100 100" style="width:100%; height:100%; position:absolute; top:0; left:0; transform:rotate(-90deg);">
-							<!-- Background circle -->
-							<circle cx="50" cy="50" r="45" stroke="#e0e0e0" stroke-width="12%" fill="none" />
+    <div style="overflow-y:auto; overflow-x:hidden; padding:1vh; padding-right:2vh; z-index:2010; display:flex; flex-direction:column; position:fixed; right:2vh; bottom:2vh; width:25vw; height:20vh; min-width:250px; min-height:50px; box-shadow:2px 2px 10px rgba(0,0,0,0.5); border-radius:4px">
+        <div style="position:absolute; top:-25px; right:-25px; width:50px; height:50px; background-color:#eeeeee; z-index:2011; transform: rotate(45deg); transform-origin: center; box-shadow:2px 2px 10px rgba(0,0,0,0.5);">
+            <i @onclick="@(ClearQues)" class="fa-solid fa-xmark" title="Clear All Complete" style="transform: rotate(-45deg); position:absolute; top:27px; left:18px; width:20px; height:20px; cursor:pointer"></i>
+        </div>
 
-							<!-- Progress circle -->
-							<circle cx="50" cy="50" r="45"
-									stroke="@(item.Value.Proggress < 0 ? "red" : "#4caf50")"
-									stroke-width="12%"
-									fill="none"
-									stroke-dasharray="@((2 * Math.PI * 45))"
-									stroke-dashoffset="@(item.Value.Proggress < 0 ? 0 : (1 - item.Value.Proggress / 100.0) * 2 * Math.PI * 45)" />
-						</svg>
-					}
+        @foreach (var item in UploadQue)
+        {
+            <div style="display:grid; grid-template-columns:10fr 10fr 80fr 10fr">
+                <i class="fa-solid fa-arrow-turn-up" style="color:lightcoral; font-size:1rem; display:flex; align-items:center; justify-content:center;"></i>
+                <i class="fa-regular fa-file" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
+                <h4 style="margin:0; text-wrap-mode:nowrap;text-overflow:ellipsis; overflow:hidden;" title="@item.Value.Name">@item.Value.Name</h4>
+                <button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress.ToString("F2")}%")" @onclick="@(async () => { UploadQue.Remove(item.Key); if (UploadQue.Count == 0) { UploadRunning = false; await PreventClosing(UploadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
+                    @if (item.Value.Proggress < 100)
+                    {
+                        <svg viewBox="0 0 100 100" style="width:100%; height:100%; position:absolute; top:0; left:0; transform:rotate(-90deg);">
+                            <!-- Background circle -->
+                            <circle cx="50" cy="50" r="45" stroke="#e0e0e0" stroke-width="12%" fill="none" />
 
-					<i class="fa-solid @(item.Value.Proggress == 100 ? "fa-check" : "fa-xmark")"
-					   style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; position:absolute; top:0; left:0;"></i>
-				</button>
-			</div>
-		}
-		@foreach (var item in DownloadQue)
-		{
-			<div style="display:grid; grid-template-columns:10fr 10fr 80fr 10fr">
-				<i class="fa-solid fa-arrow-turn-down" style="color:lightblue; font-size:1rem; display:flex; align-items:center; justify-content:center;"></i>
-				<i class="fa-regular fa-file" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
-				<h4 style="margin:0; text-wrap-mode:nowrap;text-overflow:ellipsis; overflow:hidden;" title="@item.Value.Name">@item.Value.Name</h4>
-				<button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress.ToString("F2")}%")" @onclick="@(async () => { DownloadQue.Remove(item.Key); if (DownloadQue.Count == 0 && UploadQue.Count == 0) { DownloadRunning = false; await PreventClosing(DownloadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
-					@if (item.Value.Proggress < 100)
-					{
-						<svg viewBox="0 0 100 100" style="width:100%; height:100%; position:absolute; top:0; left:0; transform:rotate(-90deg);">
-							<!-- Background circle -->
-							<circle cx="50" cy="50" r="45" stroke="#e0e0e0" stroke-width="12%" fill="none" />
+                            <!-- Progress circle -->
+                            <circle cx="50" cy="50" r="45"
+                                    stroke="@(item.Value.Proggress < 0 ? "red" : "#4caf50")"
+                                    stroke-width="12%"
+                                    fill="none"
+                                    stroke-dasharray="@((2 * Math.PI * 45))"
+                                    stroke-dashoffset="@(item.Value.Proggress < 0 ? 0 : (1 - item.Value.Proggress / 100.0) * 2 * Math.PI * 45)" />
+                        </svg>
+                    }
 
-							<!-- Progress circle -->
-							<circle cx="50" cy="50" r="45"
-									stroke="@(item.Value.Proggress < 0 ? "red" : "#4caf50")"
-									stroke-width="12%"
-									fill="none"
-									stroke-dasharray="@((2 * Math.PI * 45))"
-									stroke-dashoffset="@(item.Value.Proggress < 0 ? 0 : (1 - item.Value.Proggress / 100.0) * 2 * Math.PI * 45)" />
-						</svg>
-					}
-					<i class="fa-solid @(item.Value.Proggress == 100 ? "fa-check" : "fa-xmark")"
-					   style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; position:absolute; top:0; left:0;"></i>
-				</button>
-			</div>
-		}
-	</div>
+                    <i class="fa-solid @(item.Value.Proggress == 100 ? "fa-check" : "fa-xmark")"
+                       style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; position:absolute; top:0; left:0;"></i>
+                </button>
+            </div>
+        }
+        @foreach (var item in DownloadQue)
+        {
+            <div style="display:grid; grid-template-columns:10fr 10fr 80fr 10fr">
+                <i class="fa-solid fa-arrow-turn-down" style="color:lightblue; font-size:1rem; display:flex; align-items:center; justify-content:center;"></i>
+                <i class="fa-regular fa-file" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
+                <h4 style="margin:0; text-wrap-mode:nowrap;text-overflow:ellipsis; overflow:hidden;" title="@item.Value.Name">@item.Value.Name</h4>
+                <button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress.ToString("F2")}%")" @onclick="@(async () => { DownloadQue.Remove(item.Key); if (DownloadQue.Count == 0 && UploadQue.Count == 0) { DownloadRunning = false; await PreventClosing(DownloadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
+                    @if (item.Value.Proggress < 100)
+                    {
+                        <svg viewBox="0 0 100 100" style="width:100%; height:100%; position:absolute; top:0; left:0; transform:rotate(-90deg);">
+                            <!-- Background circle -->
+                            <circle cx="50" cy="50" r="45" stroke="#e0e0e0" stroke-width="12%" fill="none" />
+
+                            <!-- Progress circle -->
+                            <circle cx="50" cy="50" r="45"
+                                    stroke="@(item.Value.Proggress < 0 ? "red" : "#4caf50")"
+                                    stroke-width="12%"
+                                    fill="none"
+                                    stroke-dasharray="@((2 * Math.PI * 45))"
+                                    stroke-dashoffset="@(item.Value.Proggress < 0 ? 0 : (1 - item.Value.Proggress / 100.0) * 2 * Math.PI * 45)" />
+                        </svg>
+                    }
+                    <i class="fa-solid @(item.Value.Proggress == 100 ? "fa-check" : "fa-xmark")"
+                       style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; position:absolute; top:0; left:0;"></i>
+                </button>
+            </div>
+        }
+    </div>
 }
 @if (CurrentDir != null)
 {
-	<div style="display:flex; flex-direction:row;justify-content:space-between">
-		<div style="display:flex; flex-direction:row;">
-			<button style="border:none; background:none; padding:0" @onclick="@(() => GetDirectory("/"))">
-				<i class="fa-solid fa-house" style="font-size:1.5rem; display:flex; align-items:center"></i>
-			</button>
-			<h2 style="margin:0" class="no-select">/</h2>
-			<div style="display:flex; flex-direction:row; overflow-x:auto; max-width:80vw">
-				@for (int i = 0; i < CurrDirPath.Count; i++)
-				{
-					var d = i;
-					<button style="border:none; background:none; padding:0" @onclick="@(() => { GetDirectory(CurrentDir.First.Substring(0, CurrentDir.First.IndexOf(CurrDirPath[d]) + CurrDirPath[d].Length)); })">
-						<h2 style="margin:0; text-wrap-mode:nowrap;text-wrap:nowrap;">@CurrDirPath[i]</h2>
-					</button>
-					@if (CurrDirPath.Count != i + 1)
-					{
-						<h2 style="margin:0" class="no-select">/</h2>
-					}
-				}
-			</div>
-			@if (CurrDirPath.Count > 0)
-			{
-				<h2 style="margin:0" class="no-select">/</h2>
-			}
-		</div>
-		<button style="border:none; background:none" @onclick="() => GetDirectory(null, true)"><i class="fa-solid fa-arrows-rotate" style="font-size:1.75rem; display:flex; align-items:center"></i></button>
-	</div>
-	<div style="overflow-y: auto; height:65vh; position: relative;" class="upload-container" @ref="containerRef">
-		<div class="drag-overlay @(isDragging ? "visible" : "")">
-			Drop files here
-		</div>
-		<InputFile id="fileInput" class="file-input-overlay" OnChange="HandleFileSelected" multiple />
-		<div style="display:grid; grid-template-columns:30px 90fr;">
-			@{
-				int index = 0;
-			}
-			@foreach (var item in CurrentDir.Second.OrderBy(x => x.Type).ThenBy(x => x.Name))
-			{
-				string? v = GetFileIcon(item.Type);
-				if (v == null)
-				{
-					<p style="font-size:7pt">@item.Type</p>
-				}
-				else
-				{
-					<i class="@v" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
-				}
-				<div class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 10fr 30fr 10fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault @onclick:stopPropagation="true">
-					@if (Renaming && State.Selected != null && State.Selected.Equals(item))
-					{
-						<input @ref="renameInput" @bind="NewName" @bind:event="oninput" @onclick:stopPropagation="true" @onmousedown:stopPropagation="true" @onblur="() => { if (Renaming) SaveRename(); }" @onkeydown="HandleKeyDownRename" style="margin-right:10%;" />
-					}
-					else
-					{
-						<p style="font-weight:bold; margin-bottom:0; text-align:left; overflow-x:hidden; text-overflow:ellipsis;" title="@item.Name">@item.Name</p>
-					}
-					<p style="font-weight:bold; margin-right:20%; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color:#707070" : "")" title="@(item.Type == FileType.Directory ? "Not the size of the content" : "")">@item.Size.ToClosestSize(State.Settings.TryGetValue("sizeunitformat", out var format) ? format : null)</p>
-					<p style="font-weight:bold; overflow-x:hidden; text-overflow:ellipsis; margin-bottom:0; text-align:left;">@item.Modified.ToSaneString()</p>
-					<p style="font-family: monospace; font-weight:bold; overflow-x:hidden; text-overflow:ellipsis; margin-bottom:0; text-align:left;">@Utils.GetUnixPermissions(item.Permissions)</p>
-				</div>
-				index++;
-			}
-		</div>
-		@if (Loading)
-		{
-			<div style="display:flex; position:absolute; top:0; width:100%; height:100%; z-index:1000; background-color:rgba(0,0,0,0.1)">
-				<div style="height:5vh" class="spinner"></div>
-			</div>
-		}
-	</div>
+    <div style="display:flex; flex-direction:row;justify-content:space-between">
+        <div style="display:flex; flex-direction:row;">
+            <button style="border:none; background:none; padding:0" @onclick="@(() => GetDirectory("/"))">
+                <i class="fa-solid fa-house" style="font-size:1.5rem; display:flex; align-items:center"></i>
+            </button>
+            <h2 style="margin:0" class="no-select">/</h2>
+            <div style="display:flex; flex-direction:row; overflow-x:auto; max-width:80vw">
+                @for (int i = 0; i < CurrDirPath.Count; i++)
+                {
+                    var d = i;
+                    <button style="border:none; background:none; padding:0" @onclick="@(() => { GetDirectory(CurrentDir.First.Substring(0, CurrentDir.First.IndexOf(CurrDirPath[d]) + CurrDirPath[d].Length)); })">
+                        <h2 style="margin:0; text-wrap-mode:nowrap;text-wrap:nowrap;">@CurrDirPath[i]</h2>
+                    </button>
+                    @if (CurrDirPath.Count != i + 1)
+                    {
+                        <h2 style="margin:0" class="no-select">/</h2>
+                    }
+                }
+            </div>
+            @if (CurrDirPath.Count > 0)
+            {
+                <h2 style="margin:0" class="no-select">/</h2>
+            }
+        </div>
+        <button style="border:none; background:none" @onclick="() => GetDirectory(null, true)"><i class="fa-solid fa-arrows-rotate" style="font-size:1.75rem; display:flex; align-items:center"></i></button>
+    </div>
+    <div style="overflow-y: auto; height:65vh; position: relative;" class="upload-container" @ref="containerRef">
+        <div class="drag-overlay @(isDragging ? "visible" : "")">
+            Drop files here
+        </div>
+        <InputFile id="fileInput" class="file-input-overlay" OnChange="HandleFileSelected" multiple />
+        <div style="display:grid; grid-template-columns:30px 90fr;">
+            @{
+                int index = 0;
+            }
+            @foreach (var item in CurrentDir.Second.OrderBy(x => x.Type).ThenBy(x => x.Name))
+            {
+                string? v = GetFileIcon(item.Type);
+                if (v == null)
+                {
+                    <p style="font-size:7pt">@item.Type</p>
+                }
+                else
+                {
+                    <i class="@v" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
+                }
+                <div class="button-@(State.Selected != null && State.Selected.Equals(item) ? "selected" : index % 2 == 1 ? "dark" : "light")" style="text-wrap-mode:nowrap;text-wrap:nowrap; display:grid; grid-template-columns:30fr 10fr 30fr 10fr;" @onclick="@(() => FileAction(item, false))" @oncontextmenu="@(async (e) => { showMenu = true; xpx = $"{e.ClientX}px"; ypx = $"{e.ClientY}px"; await FileAction(item, true); })" @oncontextmenu:preventDefault @onclick:stopPropagation="true">
+                    @if (Renaming && State.Selected != null && State.Selected.Equals(item))
+                    {
+                        <input @ref="renameInput" @bind="NewName" @bind:event="oninput" @onclick:stopPropagation="true" @onmousedown:stopPropagation="true" @onblur="() => { if (Renaming) SaveRename(); }" @onkeydown="HandleKeyDownRename" style="margin-right:10%;" />
+                    }
+                    else
+                    {
+                        <p style="font-weight:bold; margin-bottom:0; text-align:left; overflow-x:hidden; text-overflow:ellipsis;" title="@item.Name">@item.Name</p>
+                    }
+                    <p style="font-weight:bold; margin-right:20%; margin-bottom:0; text-align:left;@(item.Type == FileType.Directory ? " color:#707070" : "")" title="@(item.Type == FileType.Directory ? "Not the size of the content" : "")">@item.Size.ToClosestSize(State.Settings.TryGetValue("sizeunitformat", out var format) ? format : null)</p>
+                    <p style="font-weight:bold; overflow-x:hidden; text-overflow:ellipsis; margin-bottom:0; text-align:left;">@item.Modified.ToSaneString()</p>
+                    <p style="font-family: monospace; font-weight:bold; overflow-x:hidden; text-overflow:ellipsis; margin-bottom:0; text-align:left;">@Utils.GetUnixPermissions(item.Permissions)</p>
+                </div>
+                index++;
+            }
+        </div>
+        @if (Loading)
+        {
+            <div style="display:flex; position:absolute; top:0; width:100%; height:100%; z-index:1000; background-color:rgba(0,0,0,0.1)">
+                <div style="height:5vh" class="spinner"></div>
+            </div>
+        }
+    </div>
 }
 else
 {
-	<div style="height:5vh" class="spinner"></div>
+    <div style="height:5vh" class="spinner"></div>
 }
 <div @onclick="@(() => { Error = ""; })">
-	<p style="color:red;">@Error</p>
+    <p style="color:red;">@Error</p>
 </div>
 @if (State.Selected != null && showMenu)
 {
-	<div style="background-color:white; display:flex; flex-direction:column; position:absolute; left:@xpx; top:@ypx; min-width:100px; width:20%;" @onmouseleave="() => { showMenu = false; }">
-		@if (Utils.AllowedActions(State.Selected, AllowedAction.Delete))
-		{
-			<ConfirmButton class="button-context" DialogQuestion="@($"Are you sure you want to delete {State.Selected.Name}?")" OnClick="Delete">
-				Delete
-			</ConfirmButton>
-		}
-		@if (Utils.AllowedActions(State.Selected, AllowedAction.Edit))
-		{
-			<button class="button-context" @onclick="Edit">
-				Edit
-			</button>
-		}
-		@if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions) && (!State.Settings.TryGetValue("disablepermchange", out var allow) || !bool.TryParse(allow, out var val) || !val))
-		{
-			<button class="button-context" @onclick="ChangePerms">
-				Permission Change
-			</button>
-		}
-		@if (Utils.AllowedActions(State.Selected, AllowedAction.Edit) && Utils.AllowedActions(State.Selected, AllowedAction.Read))
-		{
-			<button class="button-context" @onclick="View">
-				View
-			</button>
-		}
-		@if (Utils.AllowedActions(State.Selected, AllowedAction.Download))
-		{
-			<button class="button-context" @onclick="Download">
-				Download
-			</button>
-		}
-		@if (Utils.AllowedActions(State.Selected, AllowedAction.Rename))
-		{
-			<button class="button-context" @onclick="Rename">
-				Rename
-			</button>
-		}
-	</div>
+    <div style="background-color:white; display:flex; flex-direction:column; position:absolute; left:@xpx; top:@ypx; min-width:100px; width:20%;" @onmouseleave="() => { showMenu = false; }" @onclick:stopPropagation="true" @onmousedown:stopPropagation="true">
+        @if (Utils.AllowedActions(State.Selected, AllowedAction.Delete, text: out _))
+        {
+            <ConfirmButton class="button-context" DialogQuestion="@($"Are you sure you want to delete {State.Selected.Name}?")" OnClick="Delete">
+                Delete
+            </ConfirmButton>
+        }
+        @if (Utils.AllowedActions(State.Selected, AllowedAction.Edit, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out var maxedits) && int.TryParse(maxedits, out var maxe) ? maxe : 1048576))
+        {
+            <button class="button-context" @onclick="Edit">
+                Edit
+            </button>
+        }
+        @if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions, text: out _) && (!State.Settings.TryGetValue("disablepermchange", out var allow) || !bool.TryParse(allow, out var val) || !val))
+        {
+            <button class="button-context" @onclick="ChangePerms">
+                Permission Change
+            </button>
+        }
+        @if (Utils.AllowedActions(State.Selected, AllowedAction.Read, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out maxedits) && int.TryParse(maxedits, out maxe) ? maxe : 1048576))
+        {
+            <button class="button-context" @onclick="View">
+                View
+            </button>
+        }
+        @if (Utils.AllowedActions(State.Selected, AllowedAction.Download, text: out _))
+        {
+            <button class="button-context" @onclick="Download">
+                Download
+            </button>
+        }
+        @if (Utils.AllowedActions(State.Selected, AllowedAction.Rename, text: out _))
+        {
+            <button class="button-context" @onclick="Rename">
+                Rename
+            </button>
+        }
+    </div>
 }
 @if (CreateFolderOpen)
 {
-	<OverlayWindow XPercent="50" YPercent="40" OnClick="@(() => { CreateFolderOpen = false; })" OnKey="@((e) => { if (e.Key == "Enter") { CreateFolder(); CreateFolderOpen = false; } else if (e.Key == "Escape") { CreateFolderOpen = false; } })">
-		<h3>New Folder Name:</h3>
-		<input @ref="createFolderRef" @bind=CreateFolderName @bind:event="oninput" />
-		<div style="display:flex;flex-direction:row;gap:20%;justify-content:center">
-			<button class="btn-primary" style="padding:10%" @onclick="@(() => { CreateFolderOpen = false; CreateFolder(); })" tabindex="0">Create</button>
-			<button class="secondary-button" style="padding:10%" @onclick="@(() => { CreateFolderOpen = false; })" tabindex="1">Cancel</button>
-		</div>
-	</OverlayWindow>
+    <OverlayWindow XPercent="50" YPercent="40" OnClick="@(() => { CreateFolderOpen = false; })" OnKey="@((e) => { if (e.Key == "Enter") { CreateFolder(); CreateFolderOpen = false; } else if (e.Key == "Escape") { CreateFolderOpen = false; } })">
+        <h3>New Folder Name:</h3>
+        <input @ref="createFolderRef" @bind=CreateFolderName @bind:event="oninput" />
+        <div style="display:flex;flex-direction:row;gap:20%;justify-content:center">
+            <button class="btn-primary" style="padding:10%" @onclick="@(() => { CreateFolderOpen = false; CreateFolder(); })" tabindex="0">Create</button>
+            <button class="secondary-button" style="padding:10%" @onclick="@(() => { CreateFolderOpen = false; })" tabindex="1">Cancel</button>
+        </div>
+    </OverlayWindow>
 }
 @if (CertWindowOpen)
 {
-	<OverlayWindow InnerClass="scrollable" InnerStyle="padding:10%;justify-content:initial" ZIndex="2060" XPercent="70" YPercent="80" OnKey="@((e) => { if (e.Key == "Enter") { CertWindowOpen = false; } else if (e.Key == "Escape") { CertWindowOpen = false; } })">
-		<CertificateViewer Certificate="Certificate" />
-		<div style="display:flex;flex-direction:row;gap:20%;justify-content:center">
-			<button class="btn-primary" style="padding:10%" @onclick="@(async () => { CertWindowOpen = false; _certQuestion.TrySetResult(true); })" tabindex="0">Accept</button>
-			<button class="secondary-button" style="padding:10%" @onclick="@(async () => { CertWindowOpen = false; _certQuestion.TrySetResult(false); })" tabindex="1">Cancel</button>
-		</div>
-	</OverlayWindow>
+    <OverlayWindow InnerClass="scrollable" InnerStyle="padding:10%;justify-content:initial" ZIndex="2060" XPercent="70" YPercent="80" OnKey="@((e) => { if (e.Key == "Enter") { CertWindowOpen = false; } else if (e.Key == "Escape") { CertWindowOpen = false; } })">
+        <CertificateViewer Certificate="Certificate" />
+        <div style="display:flex;flex-direction:row;gap:20%;justify-content:center">
+            <button class="btn-primary" style="padding:10%" @onclick="@(async () => { CertWindowOpen = false; _certQuestion.TrySetResult(true); })" tabindex="0">Accept</button>
+            <button class="secondary-button" style="padding:10%" @onclick="@(async () => { CertWindowOpen = false; _certQuestion.TrySetResult(false); })" tabindex="1">Cancel</button>
+        </div>
+    </OverlayWindow>
 }
 @if (PermsChangeOpen)
 {
-	<OverlayWindow XPercent="80" YPercent="60" OnClick="@(() => { PermsChangeOpen = false; })" OnKey="@((e) => { if (e.Key == "Enter") { ChangePerms(); PermsChangeOpen = false; } else if (e.Key == "Escape") { PermsChangeOpen = false; } })">
-		<h3>New Permissions:</h3>
-		<PermissionEditor @bind-Perm="PermsToChange" />
-		<div style="display:flex;flex-direction:row;gap:20%;justify-content:center">
-			<button class="btn-primary" style="padding:10%" @onclick="@(() => { ChangePerms(); PermsChangeOpen = false; })" tabindex="0">Create</button>
-			<button class="secondary-button" style="padding:10%" @onclick="@(() => { PermsChangeOpen = false; })" tabindex="1">Cancel</button>
-		</div>
-	</OverlayWindow>
+    <OverlayWindow XPercent="80" YPercent="60" OnClick="@(() => { PermsChangeOpen = false; })" OnKey="@((e) => { if (e.Key == "Enter") { ChangePerms(); PermsChangeOpen = false; } else if (e.Key == "Escape") { PermsChangeOpen = false; } })">
+        <h3>New Permissions:</h3>
+        <PermissionEditor @bind-Perm="PermsToChange" />
+        <div style="display:flex;flex-direction:row;gap:20%;justify-content:center">
+            <button class="btn-primary" style="padding:10%" @onclick="@(() => { ChangePerms(); PermsChangeOpen = false; })" tabindex="0">Create</button>
+            <button class="secondary-button" style="padding:10%" @onclick="@(() => { PermsChangeOpen = false; })" tabindex="1">Cancel</button>
+        </div>
+    </OverlayWindow>
 }
 @if (ModWindowOpen)
 {
-	<OverlayWindow XPercent="90" YPercent="90">
-		<select @bind="selectedEncoding">
-			@foreach (var enc in encodings.Keys)
-			{
-				<option value="@enc">@enc</option>
-			}
-		</select>
+    <OverlayWindow XPercent="90" YPercent="90" InnerStyle="gap:5vh">
+        @if (State.EditModeText)
+        {
+            <select @bind="SelectedEncoding">
+                @foreach (var enc in encodings.Keys)
+                {
+                    <option value="@enc">@enc</option>
+                }
+            </select>
 
-		<textarea readonly="@(!EditMode)" @bind="CurrentModFileContent" rows="20" cols="80"></textarea>
-		@if (EditMode)
-		{
-			<button @onclick="EditConfirm">Save Changes</button>
-		}
-		<button @onclick="() => { EditMode = false; ModWindowOpen = false; }">@(EditMode ? "Cancel" : "Close")</button>
-	</OverlayWindow>
+            <textarea readonly="@(!EditMode)" @bind="CurrentModFileContent" rows="20" cols="80"></textarea>
+            @if (EditMode)
+            {
+                <button @onclick="EditConfirm">Save Changes</button>
+            }
+        }
+        else
+        {
+            @* <div class="image-container">
+                <img src="@CurrentModFileContent" />
+            </div> *@
+            <img class="checkered-bg" src="@CurrentModFileContent" style="max-width:90vw; max-height:70vh; object-fit:contain;" />
+        }
+        <button @onclick="() => { EditMode = false; ModWindowOpen = false; }">@(EditMode ? "Cancel" : "Close")</button>
+    </OverlayWindow>
 }
+@* <div>
+	@foreach (var item in History)
+	{
+		<p>@item</p>
+	}
+</div> *@
 @code
 {
-	[Parameter] public string? Path { get; set; }
-	private bool LoggedIn = false;
-	private bool Connecting = false;
-	private bool UploadRunning = false;
-	private bool DownloadRunning = false;
-	private LoginJson LoginStuff { get; set; } = new();
-	private RememberMeDto RememberMe { get; set; } = new();
-	private bool ShowPass { get; set; } = false;
-	private HubConnection? Hub { get; set; }
-	private bool Loading { get; set; } = true;
-	private string Error { get; set; } = "";
-	private Pair<string, List<FtpItemDto>>? CurrentDir { get; set; } = null;
-	private List<string> CurrDirPath { get; set; } = null;
-	private LinkedList<string> History { get; set; } = new();
-	private LinkedListNode<string>? CurrentHis { get; set; } = null;
-	private bool isDragging = false;
-	private bool dragEventsRegistered = false;
-	private ElementReference containerRef;
-	private DotNetObjectReference<Home>? dotnetRef;
-	private Dictionary<string, UploadQueItemDto> UploadQue = new();
-	private Dictionary<string, UploadQueItemDto> DownloadQue = new();
-	private CertificateDto? Certificate { get; set; } = null;
-	private bool CertWindowOpen = false;
-	private TaskCompletionSource<bool> _certQuestion;
-	private int PermsToChange { get; set; }
-	private bool PermsChangeOpen = false;
+    [Parameter] public string? Path { get; set; }
+    private bool LoggedIn = false;
+    private bool Connecting = false;
+    private bool UploadRunning = false;
+    private bool DownloadRunning = false;
+    private LoginJson LoginStuff { get; set; } = new();
+    private RememberMeDto RememberMe { get; set; } = new();
+    private bool ShowPass { get; set; } = false;
+    private HubConnection? Hub { get; set; }
+    private bool Loading { get; set; } = true;
+    private string Error { get; set; } = "";
+    private Pair<string, List<FtpItemDto>>? CurrentDir { get; set; } = null;
+    private List<string> CurrDirPath { get; set; } = null;
+    private LinkedList<string> History { get; set; } = new();
+    private LinkedListNode<string>? CurrentHis { get; set; } = null;
+    private bool isDragging = false;
+    private bool dragEventsRegistered = false;
+    private ElementReference containerRef;
+    private DotNetObjectReference<Home>? dotnetRef;
+    private Dictionary<string, UploadQueItemDto> UploadQue = new();
+    private Dictionary<string, UploadQueItemDto> DownloadQue = new();
+    private CertificateDto? Certificate { get; set; } = null;
+    private bool CertWindowOpen = false;
+    private TaskCompletionSource<bool> _certQuestion;
+    private int PermsToChange { get; set; }
+    private bool PermsChangeOpen = false;
+    private string SelectedEncoding
+    {
+        get => selectedEncoding;
+        set
+        {
+            if (selectedEncoding != value)
+            {
+                selectedEncoding = value;
+                CurrentModFileContent = encodings[value].GetString(CurrentModFileContentRaw);
+                StateHasChanged();
+            }
+        }
+    }
 
-	private bool showMenu;
-	private string xpx = "200px";
-	private string ypx = "200px";
-	private string dialogQuestion = "";
-	private Action? dialogAction = null;
-	private bool Renaming = false;
-	private string NewName = "";
-	private ElementReference renameInput;
-	private bool shouldFocus;
-	private bool _renameFristSelect = false;
-	private ElementReference createFolderRef;
-	private bool CreateFolderOpen = false;
-	private string CreateFolderName = "";
-	private bool _createFolderFirstSelect = false;
-	private bool ModWindowOpen = false;
-	private bool EditMode = false;
-	private string CurrentModFile = "";
-	private string CurrentModFileContent = "";
-	private byte[] CurrentModFileContentRaw = [];
-	private string selectedEncoding = "UTF-8";
-	private Dictionary<string, Encoding> encodings = new()
-	{
-		{ "UTF-8", Encoding.UTF8 },
-		{ "ASCII", Encoding.ASCII },
-		{ "Unicode (UTF-16)", Encoding.Unicode },
-		{ "UTF-32", Encoding.UTF32 }
-	};
-	private bool IsSwitchingDir = false;
+    private bool showMenu;
+    private string xpx = "200px";
+    private string ypx = "200px";
+    private string dialogQuestion = "";
+    private Action? dialogAction = null;
+    private bool Renaming = false;
+    private string NewName = "";
+    private ElementReference renameInput;
+    private bool shouldFocus;
+    private bool _renameFristSelect = false;
+    private ElementReference createFolderRef;
+    private bool CreateFolderOpen = false;
+    private string CreateFolderName = "";
+    private bool _createFolderFirstSelect = false;
+    private bool ModWindowOpen = false;
+    private bool EditMode = false;
+    private string CurrentModFile = "";
+    private string CurrentModFileContent = "";
+    private byte[] CurrentModFileContentRaw = [];
+    private string selectedEncoding = "UTF-8";
+    private Dictionary<string, Encoding> encodings = new()
+    {
+        { "UTF-8", Encoding.UTF8 },
+        { "ASCII", Encoding.ASCII },
+        { "Unicode (UTF-16)", Encoding.Unicode },
+        { "UTF-32", Encoding.UTF32 }
+    };
+    private bool IsSwitchingDir = false;
 
-	private readonly SemaphoreSlim _upDownSemaphore = new(1, 1);
-
-
-	private async Task HandleFileSelected(InputFileChangeEventArgs e)
-	{
-		if (!HubGood()) return;
-
-		var limit = 30;
-		if (State.Settings.TryGetValue("maxfileuploadatonce", out var lim) && int.TryParse(lim, out limit)) { }
-		isDragging = false;
-
-		if (e.FileCount > limit)
-		{
-			Error = $"The number of files exceeded limit ({limit})";
-			StateHasChanged();
-			return;
-		}
-
-		UploadRunning = true;
-		await PreventClosing(UploadRunning);
-		StateHasChanged();
-		var rofiles = e.GetMultipleFiles(limit);
-		var files = new List<IBrowserFile>();
-
-		var maxFileSize = 1024L * 1024 * 1024 * 500;
-		if (State.Settings.TryGetValue("maxfileuploadsize", out var max) && long.TryParse(max, out var maxLim))
-			maxFileSize = maxLim;
-
-		foreach (var file in rofiles)
-		{
-			if (UploadQue.TryGetValue(file.Name, out var queueItem) && queueItem.Proggress == 100)
-			{
-				UploadQue.Remove(file.Name);
-			}
-			else if (UploadQue.ContainsKey(file.Name))
-			{
-				Error = $"File with the same name '{file.Name}' is already being uploaded";
-				StateHasChanged();
-				continue;
-			}
-			if (file.Size > maxFileSize)
-			{
-				Error = $"File '{file.Name}' is over the size limit ({maxFileSize.ToClosestSize(State.Settings.TryGetValue("sizeunitformat", out var format) ? format : null)})";
-				StateHasChanged();
-				continue;
-			}
-
-			if (!UploadQue.TryAdd(file.Name, new UploadQueItemDto(file.Name, 0))) continue;
-			files.Add(file);
-		}
-		foreach (var file in files)
-		{
-			if (file.Size > 2 * 1024 * 1024) //2 MB
-				GetDirectory(null, true);
-			await UploadRoutine(file);
-		}
-		GetDirectory(null, true);
-		await PreventClosing(false);
-	}
-	private async Task UploadRoutine(IBrowserFile file)
-	{
-		bool lockTaken = false;
-		try
-		{
-			var chunkSize = 64 * 1024; // 64 KB chunks
-			if (State.Settings.TryGetValue("uploadlimit", out var lim) && int.TryParse(lim, out var limit))
-				chunkSize = limit;
-
-			long offset = 0;
-			var maxFileSize = 1024L * 1024 * 1024 * 500; // 500GB
-			if (State.Settings.TryGetValue("maxfileuploadsize", out var max) && long.TryParse(max, out var maxLim))
-				maxFileSize = maxLim;
-
-			using var stream = file.OpenReadStream(maxFileSize);
-			byte[] buffer = new byte[file.Size < chunkSize ? file.Size : chunkSize];
-
-			if (!State.Settings.TryGetValue("simultaneousupdown", out var simul) || !bool.TryParse(simul, out var siml) || !siml)
-			{
-				await _upDownSemaphore.WaitAsync();
-				lockTaken = true;
-			}
-
-			if (file.Size == 0)
-			{
-				if (!UploadQue.TryGetValue(file.Name, out var queueItem) || queueItem.Proggress < 0)
-				{
-					await Hub.InvokeAsync("UploadCancel", file.Name, true);
-					goto skip;
-				}
-				var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.First }, new byte[0], offset);
-				if (queueItem.Proggress >= 0)
-					queueItem.Proggress = 100;
-			}
-			else
-			{
-				while (offset < file.Size)
-				{
-					if (!UploadQue.TryGetValue(file.Name, out var queueItem) || queueItem.Proggress < 0)
-					{
-						await Hub.InvokeAsync("UploadCancel", file.Name, true);
-						goto skip;
-					}
-					int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-					if (bytesRead == 0) break;
-
-					// Trim buffer for last chunk
-					byte[] chunk = bytesRead == buffer.Length ? buffer : buffer[..bytesRead];
-
-					// Send chunk to SignalR hub
-					var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.First }, chunk, offset);
-
-					offset += bytesRead;
-					if (!long.TryParse(next, out var nexz) || offset != nexz)
-					{
-						queueItem.Problem = $"expected: {offset}, got: {next}";
-						Error = $"expected: {offset}, got: {next}";
-						await Hub.InvokeAsync("UploadCancel", file.Name, true); //for now cancel but later would be good to be able to resume the download
-						goto skip;
-					}
-					if (queueItem.Proggress >= 0)
-						queueItem.Proggress = (double)offset / file.Size * 100;
-					StateHasChanged();
-				}
-			}
-
-			// Notify server that file is complete
-			await Hub.SendAsync("UploadFinish", file.Name);
-		skip:;
-		}
-		finally
-		{
-			if (lockTaken)
-				_upDownSemaphore.Release();
-
-			StateHasChanged();
-		}
-	}
-	[JSInvokable]
-	public void ShowOverlay()
-	{
-		isDragging = true;
-		StateHasChanged();
-	}
-
-	[JSInvokable]
-	public void HideOverlay()
-	{
-		isDragging = false;
-		StateHasChanged();
-	}
-	public async Task PreventClosing(bool allowed)
-	{
-		if (allowed)
-		{
-			await JS.InvokeVoidAsync("helpers.setEnabled", true);
-			return;
-		}
-
-		bool uploadsRunning = UploadQue.Any(x => x.Value.Proggress != 100d);
-		bool downloadsRunning = DownloadQue.Any(x => x.Value.Proggress != 100d);
-
-		// if (!uploadsRunning)
-		// 	UploadRunning = false;
-
-		// if (!downloadsRunning)
-		// 	DownloadRunning = false;
-
-		if (!uploadsRunning && !downloadsRunning)
-		{
-			await JS.InvokeVoidAsync("helpers.setEnabled", false);
-		}
-	}
-	private async Task OnLogin()
-	{
-		Error = "";
-		Connecting = true;
-		if (RememberMe.RememberMe)
-		{
-			await SaveRememberMe();
-		}
-		await StartHubConn();
-		if (HubGood())
-		{
-			if (State.Settings.TryGetValue("host", out var host))
-				LoginStuff.Host = host;
-			if (State.Settings.TryGetValue("port", out var port) && int.TryParse(port, out var pp))
-				LoginStuff.Port = pp;
-			if (State.Settings.TryGetValue("passivemode", out var pass) && bool.TryParse(pass, out var pas))
-				LoginStuff.PassiveMode = pas;
+    private readonly SemaphoreSlim _upDownSemaphore = new(1, 1);
 
 
-			var cert = await Hub.InvokeAsync<CertificateDto?>("GetCert", LoginStuff.Host, LoginStuff.Port);
-			if (cert != null)
-			{
-				var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-				CertWindowOpen = true;
-				Certificate = cert;
-				_certQuestion = tcs;
-				StateHasChanged();
-				LoginStuff.AcceptCert = await tcs.Task;
-				LoginStuff.OriginalCertThumbprint = cert.Thumbprint;
-			}
-			if (!State.Settings.TryGetValue("publickey", out var pubkey))
-			{
-				Error = "Public key not set in settings, refusing to connect for security reasons";
-				StateHasChanged();
-				return;
-			}
-			//encrypt password with RSA
-			string encryptedPassword = await JS.InvokeAsync<string>("helpers.encryptPasswordWithPublicKey", LoginStuff.Password, pubkey);
-			LoginStuff.Password = encryptedPassword;
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        if (!HubGood()) return;
 
-			var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
-			if (CheckReturn(res))
-			{
-				LoggedIn = true;
-				GetDirectory(Path);
-			}
-		}
-		Connecting = false;
-	}
-	private void Back()
-	{
-		var prev = CurrentHis?.Previous;
-		if (string.IsNullOrWhiteSpace(prev?.Value))
-		{
-			Error = "Error while going back";
-			StateHasChanged();
-			return;
-		}
-		CurrentHis = prev;
-		GetDirectory(prev.Value, true);
-	}
-	private void Forward()
-	{
-		var next = CurrentHis?.Next;
-		if (string.IsNullOrWhiteSpace(next?.Value))
-		{
-			Error = "Error while going forward";
-			StateHasChanged();
-			return;
-		}
-		CurrentHis = next;
-		GetDirectory(next.Value, true);
-	}
-	private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-	{
-		if (IsSwitchingDir)
-		{
-			IsSwitchingDir = false;
-			return;
-		}
-		if (!HubGood() || !LoggedIn)
-			return;
-		var relativePath = Nav.ToBaseRelativePath(e.Location);
-		Console.WriteLine("bbbbb" + relativePath);
-		GetDirectory($"/{relativePath}");
-	}
-	private async void Logout()
-	{
-		UploadQue.Clear();
-		DownloadQue.Clear();
-		DownloadRunning = false;
-		UploadRunning = false;
-		await PreventClosing(false);
-		await ClearHubConn();
-		LoggedIn = false;
-		Loading = true;
-		CurrentDir = null;
-		Certificate = null;
-		_certQuestion = null;
-		LoginStuff.Password = null;
-		LoginStuff.AcceptCert = false;
-		LoginStuff.OriginalCertThumbprint = null;
-		dragEventsRegistered = false;
-		await OnAfterRenderAsync(true);
-		StateHasChanged();
-	}
-	private async Task Rename()
-	{
-		if (!HubGood() || State.Selected == null)
-			return;
+        var limit = 30;
+        if (State.Settings.TryGetValue("maxfileuploadatonce", out var lim) && int.TryParse(lim, out limit)) { }
+        isDragging = false;
 
-		NewName = State.Selected.Name;
-		_renameFristSelect = true;
-		Renaming = true;
-		showMenu = false;
-		shouldFocus = true;
-	}
-	private async Task SaveRename()
-	{
-		if (!HubGood() || State.Selected == null)
-			return;
+        if (e.FileCount > limit)
+        {
+            Error = $"The number of files exceeded limit ({limit})";
+            StateHasChanged();
+            return;
+        }
 
-		var res = await Hub.InvokeAsync<string>("Rename", State.Selected.Name, NewName);
-		if (CheckReturn(res))
-		{
-			Renaming = false;
-			NewName = "";
-			GetDirectory(null, true);
-		}
-	}
-	private async Task HandleKeyDownRename(KeyboardEventArgs e)
-	{
-		if (e.Key == "Enter")
-			await SaveRename();
+        UploadRunning = true;
+        await PreventClosing(UploadRunning);
+        StateHasChanged();
+        var rofiles = e.GetMultipleFiles(limit);
+        var files = new List<IBrowserFile>();
 
-		if (e.Key == "Escape")
-		{
-			Renaming = false;
-			NewName = "";
-		}
+        var maxFileSize = 1024L * 1024 * 1024 * 500;
+        if (State.Settings.TryGetValue("maxfileuploadsize", out var max) && long.TryParse(max, out var maxLim))
+            maxFileSize = maxLim;
 
-		if (e.Key == "Space" && (NewName.StartsWith(' ') || NewName.EndsWith(' ')))
-		{
-			NewName = NewName.Trim();
-		}
-	}
-	private async Task View()
-	{
-		if (!HubGood() || State.Selected == null)
-			return;
+        foreach (var file in rofiles)
+        {
+            if (UploadQue.TryGetValue(file.Name, out var queueItem) && queueItem.Proggress == 100)
+            {
+                UploadQue.Remove(file.Name);
+            }
+            else if (UploadQue.ContainsKey(file.Name))
+            {
+                Error = $"File with the same name '{file.Name}' is already being uploaded";
+                StateHasChanged();
+                continue;
+            }
+            if (file.Size > maxFileSize)
+            {
+                Error = $"File '{file.Name}' is over the size limit ({maxFileSize.ToClosestSize(State.Settings.TryGetValue("sizeunitformat", out var format) ? format : null)})";
+                StateHasChanged();
+                continue;
+            }
 
-		CurrentModFile = State.Selected.Name;
-		await Download();
-		CurrentModFileContentRaw = await JS.InvokeAsync<byte[]>("helpers.getFileBytesFromChunks", CurrentModFile);
-		CurrentModFileContent = encodings[selectedEncoding].GetString(CurrentModFileContentRaw);
-		await JS.InvokeVoidAsync("helpers.cleanupFileChunks", CurrentModFile);
-		ModWindowOpen = true;
-		StateHasChanged();
-	}
-	private async Task Edit()
-	{
-		if (!HubGood() || State.Selected == null)
-			return;
+            if (!UploadQue.TryAdd(file.Name, new UploadQueItemDto(file.Name, 0))) continue;
+            files.Add(file);
+        }
+        foreach (var file in files)
+        {
+            if (file.Size > 2 * 1024 * 1024) //2 MB
+                GetDirectory(null, true);
+            await UploadRoutine(file);
+        }
+        GetDirectory(null, true);
+        await PreventClosing(false);
+    }
+    private async Task UploadRoutine(IBrowserFile file)
+    {
+        bool lockTaken = false;
+        try
+        {
+            var chunkSize = 64 * 1024; // 64 KB chunks
+            if (State.Settings.TryGetValue("uploadlimit", out var lim) && int.TryParse(lim, out var limit))
+                chunkSize = limit;
 
-		CurrentModFile = State.Selected.Name;
-		await Download();
-		CurrentModFileContentRaw = await JS.InvokeAsync<byte[]>("helpers.getFileBytesFromChunks", CurrentModFile);
-		CurrentModFileContent = encodings[selectedEncoding].GetString(CurrentModFileContentRaw);
-		await JS.InvokeVoidAsync("helpers.cleanupFileChunks", CurrentModFile);
-		ModWindowOpen = true;
-		EditMode = true;
-		StateHasChanged();
-	}
-	private async Task EditConfirm()
-	{
-		if (!HubGood())
-			return;
+            long offset = 0;
+            var maxFileSize = 1024L * 1024 * 1024 * 500; // 500GB
+            if (State.Settings.TryGetValue("maxfileuploadsize", out var max) && long.TryParse(max, out var maxLim))
+                maxFileSize = maxLim;
 
-		var filename = $"{CurrentModFile}.tmp";
-		if (UploadQue.TryGetValue(filename, out var queueItem) && queueItem.Proggress == 100)
-		{
-			UploadQue.Remove(filename);
-		}
-		else if (UploadQue.ContainsKey(filename))
-		{
-			Error = $"File with the same name '{filename}' is already being uploaded";
-			StateHasChanged();
-			return;
-		}
+            using var stream = file.OpenReadStream(maxFileSize);
+            byte[] buffer = new byte[file.Size < chunkSize ? file.Size : chunkSize];
 
-		if (!UploadQue.TryAdd(filename, new UploadQueItemDto(filename, 0))) return;
-		await UploadRoutine(new InMemoryBrowserFile(encodings[selectedEncoding].GetBytes(CurrentModFileContent), $"{CurrentModFile}.tmp", "text/plain"));
-		var res = await Hub.InvokeAsync<string>("Delete", CurrentModFile);
-		if (CheckReturn(res))
-		{
-			res = await Hub.InvokeAsync<string>("Rename", $"{CurrentModFile}.tmp", CurrentModFile);
-			if (CheckReturn(res))
-			{
-				EditMode = false;
-				ModWindowOpen = false;
-				GetDirectory(null, true);
-			}
-		}
-	}
-	private async Task ChangePerms()
-	{
-		if (PermsChangeOpen)
-		{
-			var res = await Hub.InvokeAsync<string>("ChangePermisson", State.Selected.Name, PermsToChange);
-			CheckReturn(res);
-			GetDirectory(null, true);
-		}
-		else if (State.Selected != null)
-		{
-			PermsChangeOpen = true;
-			PermsToChange = State.Selected.Permissions;
-			StateHasChanged();
-		}
-	}
-	private async Task CreateFolderDialog()
-	{
-		CreateFolderOpen = true;
-		CreateFolderName = "New Folder";
-		_createFolderFirstSelect = true;
-		StateHasChanged();
-	}
-	private async Task CreateFolder()
-	{
-		if (!HubGood())
-			return;
+            if (!State.Settings.TryGetValue("simultaneousupdown", out var simul) || !bool.TryParse(simul, out var siml) || !siml)
+            {
+                await _upDownSemaphore.WaitAsync();
+                lockTaken = true;
+            }
 
-		string result;
-		if (CreateFolderName.StartsWith(' ') || CreateFolderName.EndsWith(' '))
-		{
-			CreateFolderName = CreateFolderName.Trim();
-		}
-		if (CurrentDir.Second.Any(x => x.Name == CreateFolderName))
-		{
-			Error = $"Folder with name '{CreateFolderName}' already exists";
-			StateHasChanged();
-			return;
-		}
+            if (file.Size == 0)
+            {
+                if (!UploadQue.TryGetValue(file.Name, out var queueItem) || queueItem.Proggress < 0)
+                {
+                    await Hub.InvokeAsync("UploadCancel", file.Name, true);
+                    goto skip;
+                }
+                var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.First }, new byte[0], offset);
+                if (queueItem.Proggress >= 0)
+                    queueItem.Proggress = 100;
+            }
+            else
+            {
+                while (offset < file.Size)
+                {
+                    if (!UploadQue.TryGetValue(file.Name, out var queueItem) || queueItem.Proggress < 0)
+                    {
+                        await Hub.InvokeAsync("UploadCancel", file.Name, true);
+                        goto skip;
+                    }
+                    int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                    if (bytesRead == 0) break;
 
-		if (State.Selected != null && State.Selected.Type == FileType.Directory)
-		{
-			result = await Hub.InvokeAsync<string>("CreateFolder", $"{State.Selected.Name}/{CreateFolderName}");
-			if (CheckReturn(result))
-				GetDirectory(State.Selected.Name, false);
-		}
-		else
-		{
-			result = await Hub.InvokeAsync<string>("CreateFolder", CreateFolderName);
-			if (CheckReturn(result))
-				GetDirectory(null, true);
-		}
-	}
-	private async void Upload()
-	{
-		await JS.InvokeVoidAsync("helpers.openFileDialog", "fileInput");
-	}
-	private async Task Download()
-	{
-		if (!HubGood() || State.Selected == null)
-			return;
+                    // Trim buffer for last chunk
+                    byte[] chunk = bytesRead == buffer.Length ? buffer : buffer[..bytesRead];
 
-		bool lockTaken = false;
-		var filename = State.Selected.Name;
-		var totalSize = State.Selected.Size;
+                    // Send chunk to SignalR hub
+                    var next = await Hub.InvokeAsync<string>("UploadChunk", new UploadMetadataDto() { Name = file.Name, Size = file.Size, UploadPath = CurrentDir.First }, chunk, offset);
 
-		if (DownloadQue.TryGetValue(filename, out var queueItem) && queueItem.Proggress == 100)
-		{
-			DownloadQue.Remove(filename);
-		}
-		else if (DownloadQue.ContainsKey(filename))
-		{
-			Error = $"File with the same name '{filename}' is already being downloaded";
-			StateHasChanged();
-			return;
-		}
+                    offset += bytesRead;
+                    if (!long.TryParse(next, out var nexz) || offset != nexz)
+                    {
+                        queueItem.Problem = $"expected: {offset}, got: {next}";
+                        Error = $"expected: {offset}, got: {next}";
+                        await Hub.InvokeAsync("UploadCancel", file.Name, true); //for now cancel but later would be good to be able to resume the download
+                        goto skip;
+                    }
+                    if (queueItem.Proggress >= 0)
+                        queueItem.Proggress = (double)offset / file.Size * 100;
+                    StateHasChanged();
+                }
+            }
 
-		DownloadRunning = true;
-		DownloadQue.Add(filename, new(filename, 0));
-		StateHasChanged();
-		if (!State.Settings.TryGetValue("simultaneousupdown", out var simul) || !bool.TryParse(simul, out var siml) || !siml)
-		{
-			await _upDownSemaphore.WaitAsync();
-			lockTaken = true;
-		}
-		var res = await Hub.InvokeAsync<string>("DownloadStart", filename, CurrentDir.First);
+            // Notify server that file is complete
+            await Hub.SendAsync("UploadFinish", file.Name);
+        skip:;
+        }
+        finally
+        {
+            if (lockTaken)
+                _upDownSemaphore.Release();
 
-		if (!CheckReturn(res))
-		{
-			StateHasChanged();
-			return;
-		}
+            StateHasChanged();
+        }
+    }
+    private async void ClearQues()
+    {
+        foreach (var item in DownloadQue)
+        { 
+            if (item.Value.Proggress >= 100 || item.Value.Proggress<0)
+            DownloadQue.Remove(item.Key);
+        }
+        if (DownloadQue.Count == 0 && UploadQue.Count == 0) 
+        { 
+            DownloadRunning = false; 
+            await PreventClosing(DownloadRunning); 
+        }
+        foreach (var item in UploadQue)
+        {
+            if (item.Value.Proggress >= 100 || item.Value.Proggress < 0)
+            UploadQue.Remove(item.Key);
+        }
+        if (UploadQue.Count == 0) 
+        { 
+            UploadRunning = false; 
+            await PreventClosing(UploadRunning); 
+        }
+    }
+    [JSInvokable]
+    public void ShowOverlay()
+    {
+        isDragging = true;
+        StateHasChanged();
+    }
 
-		await JS.InvokeVoidAsync("helpers.startFileDownload", filename);
-		await PreventClosing(DownloadRunning);
-		long offset = 0;
-		try
-		{
-			while (true)
-			{
-				if (!DownloadQue.TryGetValue(filename, out queueItem) || queueItem.Proggress < 0)
-				{
-					await Hub.InvokeAsync("DownloadCancel", filename);
-					return;
-				}
-				var result = await Hub.InvokeAsync<Pair<byte[]?, string>>(
-					"DownloadChunk", filename, offset);
+    [JSInvokable]
+    public void HideOverlay()
+    {
+        isDragging = false;
+        StateHasChanged();
+    }
+    public async Task PreventClosing(bool allowed)
+    {
+        if (allowed)
+        {
+            await JS.InvokeVoidAsync("helpers.setEnabled", true);
+            return;
+        }
 
-				if (!CheckReturn(result.Second))
-				{
-					await Hub.InvokeAsync("DownloadCancel", filename);
-					break;
-				}
+        bool uploadsRunning = UploadQue.Any(x => x.Value.Proggress != 100d);
+        bool downloadsRunning = DownloadQue.Any(x => x.Value.Proggress != 100d);
 
-				if (result.Second.Contains("EOF"))
-				{
-					if (string.IsNullOrWhiteSpace(CurrentModFile) || CurrentModFile != filename)
-						await JS.InvokeVoidAsync("helpers.finishFileDownload", filename);
-					break;
-				}
+        // if (!uploadsRunning)
+        // 	UploadRunning = false;
 
-				if (result.First == null)
-				{
-					Error = "Received empty chunk unexpectedly";
-					Console.WriteLine(Error);
-					await Hub.InvokeAsync("DownloadCancel", filename);
-					break;
-				}
+        // if (!downloadsRunning)
+        // 	DownloadRunning = false;
+
+        if (!uploadsRunning && !downloadsRunning)
+        {
+            await JS.InvokeVoidAsync("helpers.setEnabled", false);
+        }
+    }
+    private async Task OnLogin()
+    {
+        Error = "";
+        Connecting = true;
+        if (RememberMe.RememberMe)
+        {
+            await SaveRememberMe();
+        }
+        await StartHubConn();
+        if (HubGood())
+        {
+            if (State.Settings.TryGetValue("host", out var host))
+                LoginStuff.Host = host;
+            if (State.Settings.TryGetValue("port", out var port) && int.TryParse(port, out var pp))
+                LoginStuff.Port = pp;
+            if (State.Settings.TryGetValue("passivemode", out var pass) && bool.TryParse(pass, out var pas))
+                LoginStuff.PassiveMode = pas;
 
 
-				var spl = result.Second.Split('|');
-				if (!long.TryParse(spl[1].Trim(), out var nextOffset))
-				{
-					Error = "Invalid offset from server";
-					Console.WriteLine(Error);
-					await Hub.InvokeAsync("DownloadCancel", filename);
-					break;
-				}
+            var cert = await Hub.InvokeAsync<CertificateDto?>("GetCert", LoginStuff.Host, LoginStuff.Port);
+            if (cert != null)
+            {
+                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                CertWindowOpen = true;
+                Certificate = cert;
+                _certQuestion = tcs;
+                StateHasChanged();
+                LoginStuff.AcceptCert = await tcs.Task;
+                LoginStuff.OriginalCertThumbprint = cert.Thumbprint;
+            }
+            if (!State.Settings.TryGetValue("publickey", out var pubkey))
+            {
+                Error = "Public key not set in settings, refusing to connect for security reasons";
+                StateHasChanged();
+                return;
+            }
+            //encrypt password with RSA
+            string encryptedPassword = await JS.InvokeAsync<string>("helpers.encryptPasswordWithPublicKey", LoginStuff.Password, pubkey);
+            LoginStuff.Password = encryptedPassword;
 
-				//Validation:
-				if (nextOffset != offset + result.First.Length)
-				{
-					Error = $"Offset mismatch. Expected {offset + result.First.Length}, got {nextOffset}";
-					Console.WriteLine(Error);
-					await Hub.InvokeAsync("DownloadCancel", filename);
-					break;
-				}
+            var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
+            if (CheckReturn(res))
+            {
+                LoggedIn = true;
+                GetDirectory(Path);
+            }
+        }
+        Connecting = false;
+    }
+    private void Back()
+    {
+        var prev = CurrentHis?.Previous;
+        if (string.IsNullOrWhiteSpace(prev?.Value))
+        {
+            Error = "No history entry while going back";
+            StateHasChanged();
+            return;
+        }
+        CurrentHis = prev;
+        GetDirectory(prev.Value, true);
+    }
+    private void Forward()
+    {
+        var next = CurrentHis?.Next;
+        if (string.IsNullOrWhiteSpace(next?.Value))
+        {
+            Error = "No history entry while going forward";
+            StateHasChanged();
+            return;
+        }
+        CurrentHis = next;
+        GetDirectory(next.Value, true);
+    }
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (IsSwitchingDir)
+        {
+            IsSwitchingDir = false;
+            return;
+        }
+        if (!HubGood() || !LoggedIn)
+            return;
 
-				// Write chunk
-				using var stream = new MemoryStream(result.First);
-				var streamRef = new DotNetStreamReference(stream);
-				// string base64Chunk = Convert.ToBase64String(result.First);
-				await JS.InvokeVoidAsync("helpers.writeFileChunk", filename, streamRef);
-				offset = nextOffset;
+        var relativePath = $"/{Nav.ToBaseRelativePath(e.Location)}";
 
-				if (totalSize > 0 && queueItem.Proggress >= 0)
-					queueItem.Proggress = (double)offset / totalSize * 100;
-				else if (queueItem.Proggress >= 0)
-					queueItem.Proggress = 100d;
+        var next = CurrentHis?.Next;
+        var prev = CurrentHis?.Previous;
+        if (!string.IsNullOrWhiteSpace(next?.Value) && next.Value == relativePath)
+        {
+            CurrentHis = next;
+        }
+        else if (!string.IsNullOrWhiteSpace(prev?.Value) && prev.Value == relativePath)
+        {
+            CurrentHis = prev;
+        }
+        GetDirectory(relativePath, frombrowser: true);
+    }
+    private async void Logout()
+    {
+        UploadQue.Clear();
+        DownloadQue.Clear();
+        DownloadRunning = false;
+        UploadRunning = false;
+        await PreventClosing(false);
+        await ClearHubConn();
+        LoggedIn = false;
+        Loading = true;
+        CurrentDir = null;
+        Certificate = null;
+        _certQuestion = null;
+        LoginStuff.Password = null;
+        LoginStuff.AcceptCert = false;
+        LoginStuff.OriginalCertThumbprint = null;
+        dragEventsRegistered = false;
+        await OnAfterRenderAsync(true);
+        StateHasChanged();
+    }
+    private async Task Rename()
+    {
+        if (!HubGood() || State.Selected == null)
+            return;
 
-				StateHasChanged();
-			}
+        NewName = State.Selected.Name;
+        _renameFristSelect = true;
+        Renaming = true;
+        showMenu = false;
+        shouldFocus = true;
+    }
+    private async Task SaveRename()
+    {
+        if (!HubGood() || State.Selected == null)
+            return;
 
-			if (totalSize > 0 && queueItem.Proggress >= 0)
-				queueItem.Proggress = (double)offset / totalSize * 100;
-			else if (queueItem.Proggress >= 0)
-				queueItem.Proggress = 100d;
-			StateHasChanged();
-		}
-		catch (Exception e)
-		{
-			if (DownloadQue.TryGetValue(filename, out var qit))
-			{
-				qit.Proggress = -1;
-				qit.Problem = e.Message;
-			}
-			Console.WriteLine(e.Message);
-			if (State.Settings.TryGetValue("enabledebug", out var en) && bool.TryParse(en, out var val) && val)
-				Console.WriteLine(e.StackTrace);
-		}
-		finally
-		{
-			await PreventClosing(false);
-			DownloadRunning = false;
-			if (string.IsNullOrWhiteSpace(CurrentModFile) || CurrentModFile != filename)
-				await JS.InvokeVoidAsync("helpers.cleanupFileChunks", filename);
-			StateHasChanged();
-			if (lockTaken)
-				_upDownSemaphore.Release();
-		}
-	}
-	private async Task OnRememberChange(ChangeEventArgs e)
-	{
-		bool newValue = (bool)e.Value;
-		RememberMe.RememberMe = newValue;
-		if (!newValue) { await JS.InvokeVoidAsync("localStorage.removeItem", "rememberMe"); return; }
-		await SaveRememberMe();
-	}
-	protected override async Task OnAfterRenderAsync(bool firstRender)
-	{
-		if (firstRender)
-		{
-			await StartHubConn();
-			RememberMeDto? rememberMe = null;
-			try
-			{
-				rememberMe = JsonSerializer.Deserialize<RememberMeDto>(await JS.InvokeAsync<string>("localStorage.getItem", "rememberMe"));
-			}
-			catch
-			{
-				Console.WriteLine("Error In Load RememberMe");
-			}
-			if (rememberMe != null)
-			{
-				RememberMe = rememberMe;
-				LoginStuff.Host = RememberMe.Host;
-				LoginStuff.Port = RememberMe.Port;
-				LoginStuff.Username = RememberMe.Username;
-				StateHasChanged();
-			}
-			Loading = false;
-			StateHasChanged();
-		}
-		if (!dragEventsRegistered && CurrentDir != null)
-		{
-			dragEventsRegistered = true;
-			dotnetRef = DotNetObjectReference.Create(this);
-			await JS.InvokeVoidAsync(
-				"helpers.registerDragEvents",
-				containerRef,
-				dotnetRef
-			);
-		}
-		if (shouldFocus)
-		{
-			shouldFocus = false;
-			await renameInput.FocusAsync();
-			if (_renameFristSelect)
-			{
-				await JS.InvokeVoidAsync("helpers.selectInputText", renameInput);
-				_renameFristSelect = false;
-			}
-		}
-		if (CreateFolderOpen)
-		{
-			await createFolderRef.FocusAsync();
-			if (_createFolderFirstSelect)
-			{
-				_createFolderFirstSelect = false;
-				await JS.InvokeVoidAsync("helpers.selectInputText", createFolderRef);
-			}
-		}
-		await base.OnAfterRenderAsync(firstRender);
-	}
-	private async void Delete()
-	{
-		if (!HubGood() || State.Selected == null) return;
-		var res = await Hub.InvokeAsync<string>("Delete", State.Selected.Name);
-		CheckReturn(res);
-		GetDirectory(null, true);
-	}
-	private async Task SaveRememberMe()
-	{
-		RememberMe.Host = LoginStuff.Host;
-		RememberMe.Port = LoginStuff.Port;
-		RememberMe.Username = LoginStuff.Username;
-		RememberMe.PassiveMode = LoginStuff.PassiveMode;
-		await JS.InvokeVoidAsync("localStorage.setItem", "rememberMe", JsonSerializer.Serialize(RememberMe));
-	}
-	private async void GetDirectory(string? path = null, bool ignoreHistory = false)
-	{
-		if (!HubGood()) return;
-		Error = "";
-		Loading = true;
-		IsSwitchingDir = true;
-		State.Selected = null;
-		State.DirectoryLoading = true;
-		StateHasChanged();
-		var dat = "";
-		try
-		{
-			if (string.IsNullOrWhiteSpace(path))
-			{
-				dat = await Hub.InvokeAsync<string>("GetCurrentDirectory");
-				CurrentDir = JsonSerializer.Deserialize<Pair<string, List<FtpItemDto>>>(dat);
-			}
-			else if (await Hub.InvokeAsync<bool>("GoTo", path))
-			{
-				dat = await Hub.InvokeAsync<string>("GetCurrentDirectory");
-				CurrentDir = JsonSerializer.Deserialize<Pair<string, List<FtpItemDto>>>(dat);
-			}
-			else
-			{
-				GetDirectory();
-				Error = "Directory Navigation Error";
-			}
-		}
-		catch (Exception e)
-		{
-			var spl = dat.Split('|');
-			Error = spl[0];
-			foreach (var item in spl)
-			{
-				Console.WriteLine(item);
-			}
-			Console.WriteLine(e.Message);
-			if (State.Settings.TryGetValue("enabledebug", out var en) && bool.TryParse(en, out var val) && val)
-				Console.WriteLine(e.StackTrace);
-			return;
-		}
+        var res = await Hub.InvokeAsync<string>("Rename", State.Selected.Name, NewName);
+        if (CheckReturn(res))
+        {
+            Renaming = false;
+            NewName = "";
+            GetDirectory(null, true);
+        }
+    }
+    private async Task HandleKeyDownRename(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await SaveRename();
 
-		if (CurrentDir != null)
-		{
-			var p = CurrentDir.First.Split('/');
-			CurrDirPath = new();
-			if (p.Where(x => !string.IsNullOrWhiteSpace(x)).Count() <= 0)
-			{
-				CurrDirPath = new();
-			}
-			else
-			{
-				CurrDirPath = p.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-			}
+        if (e.Key == "Escape")
+        {
+            Renaming = false;
+            NewName = "";
+        }
 
-			if (!ignoreHistory && (History.Count == 0 || History.Last.Value != CurrentDir.First))
-			{
-				if (CurrentHis != null)
-				{
-					var node = CurrentHis.Next;
-					while (node != null)
-					{
-						var next = node.Next;
-						History.Remove(node);
-						node = next;
-					}
-					History.AddAfter(CurrentHis, CurrentDir.First);
-					CurrentHis = CurrentHis.Next;
-				}
-				else
-				{
-					History.AddLast(CurrentDir.First);
-					CurrentHis = History.Last;
-				}
-			}
+        if (e.Key == "Space" && (NewName.StartsWith(' ') || NewName.EndsWith(' ')))
+        {
+            NewName = NewName.Trim();
+        }
+    }
+    private async Task View()
+    {
+        if (!HubGood() || State.Selected == null)
+            return;
 
-			// Navigate without reloading
-			var uri = new Uri(Nav.Uri);
-			var origin = $"{uri.Scheme}://{uri.Host}{(!uri.IsDefaultPort ? $":{uri.Port}" : "")}";
-			var newUrl = $"{origin}/{CurrentHis.Value.TrimStart('/')}";
-			Nav.NavigateTo(newUrl, replace: false);
+        CurrentModFile = State.Selected.Name;
+        await Download();
+        CurrentModFileContentRaw = await JS.InvokeAsync<byte[]>("helpers.getFileBytesFromChunks", CurrentModFile);
+        if (State.EditModeText)
+        {
+            CurrentModFileContent = encodings[SelectedEncoding].GetString(CurrentModFileContentRaw);
+        }
+        else
+        {
+            CurrentModFileContent = $"data:{Utils.GetMimeType(CurrentModFileContentRaw)};base64,{Convert.ToBase64String(CurrentModFileContentRaw)}";
+        }
+        await JS.InvokeVoidAsync("helpers.cleanupFileChunks", CurrentModFile);
+        ModWindowOpen = true;
+        StateHasChanged();
+    }
+    private async Task Edit()
+    {
+        if (!HubGood() || State.Selected == null)
+            return;
 
-			dragEventsRegistered = false;
-			await OnAfterRenderAsync(true);
-		}
-		Loading = false;
-		State.DirectoryLoading = false;
-		IsSwitchingDir = false;
-		StateHasChanged();
-	}
-	private string? GetFileIcon(FileType type)
-	{
-		switch (type)
-		{
-			case FileType.Directory:
-				return "fa-solid fa-folder";
-			case FileType.File:
-				return "fa-regular fa-file";
-			default:
-				return null;
-		}
-	}
-	private async Task FileAction(FtpItemDto item, bool rightclick)
-	{
-		if (item.Type == FileType.Directory && !rightclick)
-		{
-			GetDirectory($"{CurrentDir.First}/{item.Name}");
-		}
-		else if (State.Selected == null || !State.Selected.Equals(item))
-		{
-			State.Selected = item;
-		}
-	}
-	private async Task ClearHubConn()
-	{
-		if (Hub != null)
-		{
-			try
-			{
-				await Hub.StopAsync();
-				await Hub.DisposeAsync();
-				Hub = null;
-			}
-			catch { }
-		}
-	}
-	private async Task StartHubConn()
-	{
-		if (Hub != null && Hub.State != HubConnectionState.Connected)
-		{
-			await ClearHubConn();
-		}
-		if (Hub == null)
-		{
-			var baseUrl = Env.GetValue<string>("ApiBaseUrl");
-			Hub = new HubConnectionBuilder()
-				.WithUrl($"{baseUrl}ftphub")
-				.WithAutomaticReconnect()
-				.Build();
-			await InitHubStuff();
-			await Hub.StartAsync();
-			Hub.Reconnecting += (e) => InitHubStuff();
-		}
-	}
-	private async Task InitHubStuff()
-	{
-		if (Hub == null) return;
-		Hub.On<List<Pair>>("ReceiveInitData", async data =>
-			{
-				State.Settings = data.ToDictionary(y => y.Name, x => x.Value);
-				StateHasChanged();
+        CurrentModFile = State.Selected.Name;
+        await Download();
+        CurrentModFileContentRaw = await JS.InvokeAsync<byte[]>("helpers.getFileBytesFromChunks", CurrentModFile);
+        if (State.EditModeText)
+        {
+            CurrentModFileContent = encodings[SelectedEncoding].GetString(CurrentModFileContentRaw);
+        }
+        else
+        {
+            CurrentModFileContent = $"data:{Utils.GetMimeType(CurrentModFileContentRaw)};base64,{Convert.ToBase64String(CurrentModFileContentRaw)}";
+        }
+        await JS.InvokeVoidAsync("helpers.cleanupFileChunks", CurrentModFile);
+        ModWindowOpen = true;
+        EditMode = true;
+        StateHasChanged();
+    }
+    private async Task EditConfirm()
+    {
+        if (!HubGood())
+            return;
 
-				//try reconnect with current Settings if exist
-				if (!string.IsNullOrWhiteSpace(LoginStuff.Username) && !string.IsNullOrWhiteSpace(LoginStuff.Host) && !string.IsNullOrWhiteSpace(LoginStuff.Password))
-				{
-					var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
-					if (CheckReturn(res))
-					{
-						LoggedIn = true;
-						GetDirectory();
-					}
-				}
-			});
-		Hub.On<Pair>("ForceUploadCancel", async data =>
-			{
-				if (UploadQue.TryGetValue(data.Name, out var que))
-				{
-					que.Proggress = -1;
-					que.Problem = data.Value;
-				}
-			});
-		Hub.On<Pair>("ForceDownloadCancel", async data =>
-			{
-				if (DownloadQue.TryGetValue(data.Name, out var que))
-				{
-					que.Proggress = -1;
-					que.Problem = data.Value;
-				}
-			});
-	}
-	private bool HubGood()
-	{
-		if (Hub == null || Hub.State != HubConnectionState.Connected)
-			return false;
+        var filename = $"{CurrentModFile}.tmp";
+        if (UploadQue.TryGetValue(filename, out var queueItem) && queueItem.Proggress == 100)
+        {
+            UploadQue.Remove(filename);
+        }
+        else if (UploadQue.ContainsKey(filename))
+        {
+            Error = $"File with the same name '{filename}' is already being uploaded";
+            StateHasChanged();
+            return;
+        }
 
-		return true;
-	}
-	/// <summary>
-	/// returns true if first part is bool true, false otherwise and sets error message to second part if exist
-	/// </summary>
-	/// <param name="res"></param>
-	/// <returns></returns>
-	private bool CheckReturn(string res)
-	{
-		var spl = res.Split('|');
-		if (!bool.TryParse(spl[0], out var ok) || !ok)
-		{
-			Error = spl.Length > 1 ? spl[1].Trim() : "Unknown error";
-			HandleStateChange();
-			Console.WriteLine(Error);
-			if ((spl.Length > 2 && State.Settings.TryGetValue("enabledebug", out var en) && bool.TryParse(en, out var val) && val) || spl.Length > 2)
-			{
-				Console.WriteLine(spl[2].Trim());
-			}
-			return false;
-		}
-		return true;
-	}
-	protected override void OnInitialized()
-	{
-		State.BackClicked += Back;
-		State.ForwardClicked += Forward;
-		State.LogoutClicked += Logout;
-		State.UploadClicked += Upload;
-		State.DeleteClicked += Delete;
-		State.DownloadClicked += Download;
-		State.RenameClicked += Rename;
-		State.ViewClicked += View;
-		State.EditClicked += Edit;
-		State.CreateFolderClicked += CreateFolderDialog;
-		State.PermChangeClicked += ChangePerms;
-		State.OnChange += HandleStateChange;
-		Nav.LocationChanged += OnLocationChanged;
-		base.OnInitialized();
-	}
-	public void Dispose()
-	{
-		State.BackClicked -= Back;
-		State.ForwardClicked -= Forward;
-		State.LogoutClicked -= Logout;
-		State.UploadClicked -= Upload;
-		State.DeleteClicked -= Delete;
-		State.DownloadClicked -= Download;
-		State.RenameClicked -= Rename;
-		State.ViewClicked -= View;
-		State.EditClicked -= Edit;
-		State.CreateFolderClicked -= CreateFolderDialog;
-		State.PermChangeClicked -= ChangePerms;
-		State.OnChange -= HandleStateChange;
-		Nav.LocationChanged -= OnLocationChanged;
-		ClearHubConn();
-	}
-	private async void HandleStateChange()
-	{
-		await InvokeAsync(StateHasChanged);
-	}
+        if (!UploadQue.TryAdd(filename, new UploadQueItemDto(filename, 0))) return;
+        await UploadRoutine(new InMemoryBrowserFile(encodings[selectedEncoding].GetBytes(CurrentModFileContent), $"{CurrentModFile}.tmp", "text/plain"));
+        var res = await Hub.InvokeAsync<string>("Delete", CurrentModFile);
+        if (CheckReturn(res))
+        {
+            res = await Hub.InvokeAsync<string>("Rename", $"{CurrentModFile}.tmp", CurrentModFile);
+            if (CheckReturn(res))
+            {
+                EditMode = false;
+                ModWindowOpen = false;
+                GetDirectory(null, true);
+            }
+        }
+    }
+    private async Task ChangePerms()
+    {
+        if (PermsChangeOpen)
+        {
+            var res = await Hub.InvokeAsync<string>("ChangePermisson", State.Selected.Name, PermsToChange);
+            CheckReturn(res);
+            GetDirectory(null, true);
+        }
+        else if (State.Selected != null)
+        {
+            PermsChangeOpen = true;
+            PermsToChange = State.Selected.Permissions;
+            StateHasChanged();
+        }
+    }
+    private async Task CreateFolderDialog()
+    {
+        CreateFolderOpen = true;
+        CreateFolderName = "New Folder";
+        _createFolderFirstSelect = true;
+        StateHasChanged();
+    }
+    private async Task CreateFolder()
+    {
+        if (!HubGood())
+            return;
+
+        string result;
+        if (CreateFolderName.StartsWith(' ') || CreateFolderName.EndsWith(' '))
+        {
+            CreateFolderName = CreateFolderName.Trim();
+        }
+        if (CurrentDir.Second.Any(x => x.Name == CreateFolderName))
+        {
+            Error = $"Folder with name '{CreateFolderName}' already exists";
+            StateHasChanged();
+            return;
+        }
+
+        if (State.Selected != null && State.Selected.Type == FileType.Directory)
+        {
+            result = await Hub.InvokeAsync<string>("CreateFolder", $"{State.Selected.Name}/{CreateFolderName}");
+            if (CheckReturn(result))
+                GetDirectory(State.Selected.Name, false);
+        }
+        else
+        {
+            result = await Hub.InvokeAsync<string>("CreateFolder", CreateFolderName);
+            if (CheckReturn(result))
+                GetDirectory(null, true);
+        }
+    }
+    private async void Upload()
+    {
+        await JS.InvokeVoidAsync("helpers.openFileDialog", "fileInput");
+    }
+    private async Task Download()
+    {
+        if (!HubGood() || State.Selected == null)
+            return;
+
+        bool lockTaken = false;
+        var filename = State.Selected.Name;
+        var totalSize = State.Selected.Size;
+
+        if (DownloadQue.TryGetValue(filename, out var queueItem) && queueItem.Proggress == 100)
+        {
+            DownloadQue.Remove(filename);
+        }
+        else if (DownloadQue.ContainsKey(filename))
+        {
+            Error = $"File with the same name '{filename}' is already being downloaded";
+            StateHasChanged();
+            return;
+        }
+
+        DownloadRunning = true;
+        DownloadQue.Add(filename, new(filename, 0));
+        StateHasChanged();
+        if (!State.Settings.TryGetValue("simultaneousupdown", out var simul) || !bool.TryParse(simul, out var siml) || !siml)
+        {
+            await _upDownSemaphore.WaitAsync();
+            lockTaken = true;
+        }
+        var res = await Hub.InvokeAsync<string>("DownloadStart", filename, CurrentDir.First);
+
+        if (!CheckReturn(res))
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await JS.InvokeVoidAsync("helpers.startFileDownload", filename);
+        await PreventClosing(DownloadRunning);
+        long offset = 0;
+        try
+        {
+            while (true)
+            {
+                if (!DownloadQue.TryGetValue(filename, out queueItem) || queueItem.Proggress < 0)
+                {
+                    await Hub.InvokeAsync("DownloadCancel", filename);
+                    return;
+                }
+                var result = await Hub.InvokeAsync<Pair<byte[]?, string>>(
+                    "DownloadChunk", filename, offset);
+
+                if (!CheckReturn(result.Second))
+                {
+                    await Hub.InvokeAsync("DownloadCancel", filename);
+                    break;
+                }
+
+                if (result.Second.Contains("EOF"))
+                {
+                    if (string.IsNullOrWhiteSpace(CurrentModFile) || CurrentModFile != filename)
+                        await JS.InvokeVoidAsync("helpers.finishFileDownload", filename);
+                    break;
+                }
+
+                if (result.First == null)
+                {
+                    Error = "Received empty chunk unexpectedly";
+                    Console.WriteLine(Error);
+                    await Hub.InvokeAsync("DownloadCancel", filename);
+                    break;
+                }
+
+
+                var spl = result.Second.Split('|');
+                if (!long.TryParse(spl[1].Trim(), out var nextOffset))
+                {
+                    Error = "Invalid offset from server";
+                    Console.WriteLine(Error);
+                    await Hub.InvokeAsync("DownloadCancel", filename);
+                    break;
+                }
+
+                //Validation:
+                if (nextOffset != offset + result.First.Length)
+                {
+                    Error = $"Offset mismatch. Expected {offset + result.First.Length}, got {nextOffset}";
+                    Console.WriteLine(Error);
+                    await Hub.InvokeAsync("DownloadCancel", filename);
+                    break;
+                }
+
+                // Write chunk
+                using var stream = new MemoryStream(result.First);
+                var streamRef = new DotNetStreamReference(stream);
+                // string base64Chunk = Convert.ToBase64String(result.First);
+                await JS.InvokeVoidAsync("helpers.writeFileChunk", filename, streamRef);
+                offset = nextOffset;
+
+                if (totalSize > 0 && queueItem.Proggress >= 0)
+                    queueItem.Proggress = (double)offset / totalSize * 100;
+                else if (queueItem.Proggress >= 0)
+                    queueItem.Proggress = 100d;
+
+                StateHasChanged();
+            }
+
+            if (totalSize > 0 && queueItem.Proggress >= 0)
+                queueItem.Proggress = (double)offset / totalSize * 100;
+            else if (queueItem.Proggress >= 0)
+                queueItem.Proggress = 100d;
+            StateHasChanged();
+        }
+        catch (Exception e)
+        {
+            if (DownloadQue.TryGetValue(filename, out var qit))
+            {
+                qit.Proggress = -1;
+                qit.Problem = e.Message;
+            }
+            Console.WriteLine(e.Message);
+            if (State.Settings.TryGetValue("enabledebug", out var en) && bool.TryParse(en, out var val) && val)
+                Console.WriteLine(e.StackTrace);
+        }
+        finally
+        {
+            await PreventClosing(false);
+            DownloadRunning = false;
+            if (string.IsNullOrWhiteSpace(CurrentModFile) || CurrentModFile != filename)
+                await JS.InvokeVoidAsync("helpers.cleanupFileChunks", filename);
+            StateHasChanged();
+            if (lockTaken)
+                _upDownSemaphore.Release();
+        }
+    }
+    private async Task OnRememberChange(ChangeEventArgs e)
+    {
+        bool newValue = (bool)e.Value;
+        RememberMe.RememberMe = newValue;
+        if (!newValue) { await JS.InvokeVoidAsync("localStorage.removeItem", "rememberMe"); return; }
+        await SaveRememberMe();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await StartHubConn();
+            RememberMeDto? rememberMe = null;
+            try
+            {
+                rememberMe = JsonSerializer.Deserialize<RememberMeDto>(await JS.InvokeAsync<string>("localStorage.getItem", "rememberMe"));
+            }
+            catch
+            {
+                Console.WriteLine("Error In Load RememberMe");
+            }
+            if (rememberMe != null)
+            {
+                RememberMe = rememberMe;
+                LoginStuff.Host = RememberMe.Host;
+                LoginStuff.Port = RememberMe.Port;
+                LoginStuff.Username = RememberMe.Username;
+                StateHasChanged();
+            }
+            Loading = false;
+            StateHasChanged();
+        }
+        if (!dragEventsRegistered && CurrentDir != null)
+        {
+            dragEventsRegistered = true;
+            dotnetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync(
+                "helpers.registerDragEvents",
+                containerRef,
+                dotnetRef
+            );
+        }
+        if (shouldFocus)
+        {
+            shouldFocus = false;
+            await renameInput.FocusAsync();
+            if (_renameFristSelect)
+            {
+                await JS.InvokeVoidAsync("helpers.selectInputText", renameInput);
+                _renameFristSelect = false;
+            }
+        }
+        if (CreateFolderOpen)
+        {
+            await createFolderRef.FocusAsync();
+            if (_createFolderFirstSelect)
+            {
+                _createFolderFirstSelect = false;
+                await JS.InvokeVoidAsync("helpers.selectInputText", createFolderRef);
+            }
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+    private async void Delete()
+    {
+        if (!HubGood() || State.Selected == null) return;
+        var res = await Hub.InvokeAsync<string>("Delete", State.Selected.Name);
+        CheckReturn(res);
+        GetDirectory(null, true);
+    }
+    private async Task SaveRememberMe()
+    {
+        RememberMe.Host = LoginStuff.Host;
+        RememberMe.Port = LoginStuff.Port;
+        RememberMe.Username = LoginStuff.Username;
+        RememberMe.PassiveMode = LoginStuff.PassiveMode;
+        await JS.InvokeVoidAsync("localStorage.setItem", "rememberMe", JsonSerializer.Serialize(RememberMe));
+    }
+    private async void GetDirectory(string? path = null, bool ignoreHistory = false, bool frombrowser = false)
+    {
+        if (!HubGood()) return;
+        Error = "";
+        Loading = true;
+        IsSwitchingDir = true;
+        State.Selected = null;
+        State.DirectoryLoading = true;
+        StateHasChanged();
+        var dat = "";
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                dat = await Hub.InvokeAsync<string>("GetCurrentDirectory");
+                CurrentDir = JsonSerializer.Deserialize<Pair<string, List<FtpItemDto>>>(dat);
+            }
+            else if (await Hub.InvokeAsync<bool>("GoTo", path))
+            {
+                dat = await Hub.InvokeAsync<string>("GetCurrentDirectory");
+                CurrentDir = JsonSerializer.Deserialize<Pair<string, List<FtpItemDto>>>(dat);
+            }
+            else
+            {
+                GetDirectory();
+                Error = "Directory Navigation Error";
+            }
+        }
+        catch (Exception e)
+        {
+            var spl = dat.Split('|');
+            Error = spl[0];
+            foreach (var item in spl)
+            {
+                Console.WriteLine(item);
+            }
+            Console.WriteLine(e.Message);
+            if (State.Settings.TryGetValue("enabledebug", out var en) && bool.TryParse(en, out var val) && val)
+                Console.WriteLine(e.StackTrace);
+            return;
+        }
+
+        if (CurrentDir != null)
+        {
+            var p = CurrentDir.First.Split('/');
+            CurrDirPath = new();
+            if (p.Where(x => !string.IsNullOrWhiteSpace(x)).Count() <= 0)
+            {
+                CurrDirPath = new();
+            }
+            else
+            {
+                CurrDirPath = p.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+            }
+
+            if (!ignoreHistory && !frombrowser && (History.Count == 0 || History.Last.Value != CurrentDir.First))
+            {
+                if (CurrentHis != null)
+                {
+                    var node = CurrentHis.Next;
+                    while (node != null)
+                    {
+                        var next = node.Next;
+                        History.Remove(node);
+                        node = next;
+                    }
+                    History.AddAfter(CurrentHis, CurrentDir.First);
+                    CurrentHis = CurrentHis.Next;
+                }
+                else
+                {
+                    History.AddLast(CurrentDir.First);
+                    CurrentHis = History.Last;
+                }
+            }
+
+            // Navigate without reloading
+            if (!frombrowser)
+            {
+                var uri = new Uri(Nav.Uri);
+                var origin = $"{uri.Scheme}://{uri.Host}{(!uri.IsDefaultPort ? $":{uri.Port}" : "")}";
+                var newUrl = $"{origin}/{CurrentHis.Value.TrimStart('/')}";
+                Nav.NavigateTo(newUrl, replace: false);
+            }
+
+            dragEventsRegistered = false;
+            await OnAfterRenderAsync(true);
+        }
+        Loading = false;
+        State.DirectoryLoading = false;
+        IsSwitchingDir = false;
+        StateHasChanged();
+    }
+    private string? GetFileIcon(FileType type)
+    {
+        switch (type)
+        {
+            case FileType.Directory:
+                return "fa-solid fa-folder";
+            case FileType.File:
+                return "fa-regular fa-file";
+            default:
+                return null;
+        }
+    }
+    private async Task FileAction(FtpItemDto item, bool rightclick)
+    {
+        if (item.Type == FileType.Directory && !rightclick)
+        {
+            GetDirectory($"{CurrentDir.First}/{item.Name}");
+        }
+        else if (State.Selected == null || !State.Selected.Equals(item))
+        {
+            State.Selected = item;
+        }
+    }
+    private async Task ClearHubConn()
+    {
+        if (Hub != null)
+        {
+            try
+            {
+                await Hub.StopAsync();
+                await Hub.DisposeAsync();
+                Hub = null;
+            }
+            catch { }
+        }
+    }
+    private async Task StartHubConn()
+    {
+        if (Hub != null && Hub.State != HubConnectionState.Connected)
+        {
+            await ClearHubConn();
+        }
+        if (Hub == null)
+        {
+            var baseUrl = Env.GetValue<string>("ApiBaseUrl");
+            Hub = new HubConnectionBuilder()
+                .WithUrl($"{baseUrl}ftphub")
+                .WithAutomaticReconnect()
+                .Build();
+            await InitHubStuff();
+            await Hub.StartAsync();
+            Hub.Reconnecting += (e) => InitHubStuff();
+        }
+    }
+    private async Task InitHubStuff()
+    {
+        if (Hub == null) return;
+        Hub.On<List<Pair>>("ReceiveInitData", async data =>
+            {
+                State.Settings = data.ToDictionary(y => y.Name, x => x.Value);
+                StateHasChanged();
+
+                //try reconnect with current Settings if exist
+                if (!string.IsNullOrWhiteSpace(LoginStuff.Username) && !string.IsNullOrWhiteSpace(LoginStuff.Host) && !string.IsNullOrWhiteSpace(LoginStuff.Password))
+                {
+                    var res = await Hub.InvokeAsync<string>("InitFtp", LoginStuff);
+                    if (CheckReturn(res))
+                    {
+                        LoggedIn = true;
+                        GetDirectory();
+                    }
+                }
+            });
+        Hub.On<Pair>("ForceUploadCancel", async data =>
+            {
+                if (UploadQue.TryGetValue(data.Name, out var que))
+                {
+                    que.Proggress = -1;
+                    que.Problem = data.Value;
+                }
+            });
+        Hub.On<Pair>("ForceDownloadCancel", async data =>
+            {
+                if (DownloadQue.TryGetValue(data.Name, out var que))
+                {
+                    que.Proggress = -1;
+                    que.Problem = data.Value;
+                }
+            });
+    }
+    private bool HubGood()
+    {
+        if (Hub == null || Hub.State != HubConnectionState.Connected)
+            return false;
+
+        return true;
+    }
+    /// <summary>
+    /// returns true if first part is bool true, false otherwise and sets error message to second part if exist
+    /// </summary>
+    /// <param name="res"></param>
+    /// <returns></returns>
+    private bool CheckReturn(string res)
+    {
+        var spl = res.Split('|');
+        if (!bool.TryParse(spl[0], out var ok) || !ok)
+        {
+            Error = spl.Length > 1 ? spl[1].Trim() : "Unknown error";
+            HandleStateChange();
+            Console.WriteLine(Error);
+            if ((spl.Length > 2 && State.Settings.TryGetValue("enabledebug", out var en) && bool.TryParse(en, out var val) && val) || spl.Length > 2)
+            {
+                Console.WriteLine(spl[2].Trim());
+            }
+            return false;
+        }
+        return true;
+    }
+    protected override void OnInitialized()
+    {
+        State.BackClicked += Back;
+        State.ForwardClicked += Forward;
+        State.LogoutClicked += Logout;
+        State.UploadClicked += Upload;
+        State.DeleteClicked += Delete;
+        State.DownloadClicked += Download;
+        State.RenameClicked += Rename;
+        State.ViewClicked += View;
+        State.EditClicked += Edit;
+        State.CreateFolderClicked += CreateFolderDialog;
+        State.PermChangeClicked += ChangePerms;
+        State.OnChange += HandleStateChange;
+        Nav.LocationChanged += OnLocationChanged;
+        base.OnInitialized();
+    }
+    public void Dispose()
+    {
+        State.BackClicked -= Back;
+        State.ForwardClicked -= Forward;
+        State.LogoutClicked -= Logout;
+        State.UploadClicked -= Upload;
+        State.DeleteClicked -= Delete;
+        State.DownloadClicked -= Download;
+        State.RenameClicked -= Rename;
+        State.ViewClicked -= View;
+        State.EditClicked -= Edit;
+        State.CreateFolderClicked -= CreateFolderDialog;
+        State.PermChangeClicked -= ChangePerms;
+        State.OnChange -= HandleStateChange;
+        Nav.LocationChanged -= OnLocationChanged;
+        ClearHubConn();
+    }
+    private async void HandleStateChange()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
 }

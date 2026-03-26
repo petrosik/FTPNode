@@ -84,5 +84,7 @@
                 }
             }
         }
+
+        public bool EditModeText = false;
     }
 }

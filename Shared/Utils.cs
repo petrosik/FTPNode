@@ -4,6 +4,26 @@ namespace Shared
 {
     public static class Utils
     {
+        private static readonly HashSet<string> ImageExtensions = new()
+        {
+            ".png", ".jpg", ".jpeg", ".gif",
+            ".bmp", ".webp", ".tiff", ".tif",
+            ".ico", ".heic", ".heif", ".svg"
+        };
+        private static readonly HashSet<string> TextLikeExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".txt", ".html", ".htm", ".css",
+            ".js", ".json", ".xml", ".md",
+            ".csv", ".log", ".cfg", ".ini",
+            ".bat", ".sh", ".py", ".java",
+            ".yml", ".yaml", ".c", ".cpp",
+            ".cs", ".rb", ".php", ".ts",
+            ".swift", ".go", ".rs", ".ps1",
+            ".vbs", ".toml", ".properties", ".env",
+            ".make", "Makefile", ".dockerfile", ".conf",
+            ".tex", ".rst", ".adoc",".out",
+            ".msg"
+        };
         public static UnixPermission GetPermissions(int chmod, PermissionScope scope = PermissionScope.Owner)
         {
             // Convert only if it looks like an octal-text int
@@ -70,14 +90,11 @@ namespace Shared
             return $"{size:0.##} {units[unitIndex]}";
         }
 
-        public static bool AllowedActions(this FtpItemDto ftpItem, AllowedAction action, long sizeLimit = 1048576)
+        public static bool AllowedActions(this FtpItemDto ftpItem, AllowedAction action, out bool text, long sizeLimit = 1048576)
         {
+            text = false;
             var perms = GetPermissions(ftpItem.Permissions, PermissionScope.Owner);
-            if (((action & AllowedAction.Read) == AllowedAction.Read) && (perms & UnixPermission.Read) == UnixPermission.Read)
-            {
-                return true;
-            }
-            else if ((action & AllowedAction.Download) == AllowedAction.Download && ftpItem.Type != FileType.Directory && (perms & UnixPermission.Read) == UnixPermission.Read)
+            if ((action & AllowedAction.Download) == AllowedAction.Download && ftpItem.Type != FileType.Directory && (perms & UnixPermission.Read) == UnixPermission.Read)
             {
                 return true;
             }
@@ -92,49 +109,16 @@ namespace Shared
             {
                 return true;
             }
-            else if ((action & AllowedAction.Edit) == AllowedAction.Edit && ftpItem.Type != FileType.Directory && ftpItem.Size <= sizeLimit && (perms & UnixPermission.Write) == UnixPermission.Write)
+            else if ((((action & AllowedAction.Read) == AllowedAction.Read) && (perms & UnixPermission.Read) == UnixPermission.Read) ||
+                ((action & AllowedAction.Edit) == AllowedAction.Edit && ftpItem.Type != FileType.Directory && ftpItem.Size <= sizeLimit && (perms & UnixPermission.Write) == UnixPermission.Write))
             {
                 var ext = System.IO.Path.GetExtension(ftpItem.Name).ToLower();
-                if (ext == ".txt" ||
-                    ext == ".html" ||
-                    ext == ".htm" ||
-                    ext == ".css" ||
-                    ext == ".js" ||
-                    ext == ".json" ||
-                    ext == ".xml" ||
-                    ext == ".md" ||
-                    ext == ".csv" ||
-                    ext == ".log" ||
-                    ext == ".cfg" ||
-                    ext == ".ini" ||
-                    ext == ".bat" ||
-                    ext == ".sh" ||
-                    ext == ".py" ||
-                    ext == ".java" ||
-                    ext == ".yml" ||
-                    ext == ".yaml" ||
-                    ext == ".c" ||
-                    ext == ".cpp" ||
-                    ext == ".cs" ||
-                    ext == ".rb" ||
-                    ext == ".php" ||
-                    ext == ".ts" ||
-                    ext == ".swift" ||
-                    ext == ".go" ||
-                    ext == ".rs" ||
-                    ext == ".ps1" ||
-                    ext == ".vbs" ||
-                    ext == ".toml" ||
-                    ext == ".properties" ||
-                    ext == ".env" ||
-                    ext == ".make" || ext == "Makefile" ||
-                    ext == ".dockerfile" ||
-                    ext == ".conf" ||
-                    ext == ".tex" ||
-                    ext == ".rst" ||
-                    ext == ".adoc" ||
-                    ext == ".out" ||
-                    ext == ".msg")
+                if (TextLikeExtensions.Contains(ext))
+                {
+                    text = true;
+                    return true;
+                }
+                else if ((action & AllowedAction.Edit) != AllowedAction.Edit && ImageExtensions.Contains(ext))
                 {
                     return true;
                 }
@@ -143,7 +127,7 @@ namespace Shared
         }
         public static string ToSaneString(this DateTime time)
         {
-            return time.ToString("yyyy/MM/dd HH:mm:ss");
+            return time.ToString("dd. MM. yyyy HH:mm:ss");
         }
         public static int CalcPerm(bool r, bool w, bool x) => (r ? 4 : 0) + (w ? 2 : 0) + (x ? 1 : 0);
         public static string StyleMerge(params string[] styles)
@@ -169,6 +153,60 @@ namespace Shared
             }
 
             return string.Join("; ", dict.Select(kv => $"{kv.Key}: {kv.Value}"));
+        }
+        public static string GetMimeType(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length < 4)
+                return "application/octet-stream";
+
+            // PNG
+            if (bytes.Length >= 8 &&
+                bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47)
+                return "image/png";
+
+            // JPEG
+            if (bytes[0] == 0xFF && bytes[1] == 0xD8)
+                return "image/jpeg";
+
+            // GIF (GIF87a / GIF89a)
+            if (bytes.Length >= 6 &&
+                bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46)
+                return "image/gif";
+
+            // BMP
+            if (bytes[0] == 0x42 && bytes[1] == 0x4D)
+                return "image/bmp";
+
+            // WEBP (RIFF....WEBP)
+            if (bytes.Length >= 12 &&
+                bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 &&
+                bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50)
+                return "image/webp";
+
+            // TIFF (little endian & big endian)
+            if ((bytes[0] == 0x49 && bytes[1] == 0x49) || (bytes[0] == 0x4D && bytes[1] == 0x4D))
+                return "image/tiff";
+
+            // ICO
+            if (bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0x01 && bytes[3] == 0x00)
+                return "image/x-icon";
+
+            // HEIC / HEIF (ISO Base Media File Format)
+            if (bytes.Length >= 12 &&
+                bytes[4] == 0x66 && bytes[5] == 0x74 && bytes[6] == 0x79 && bytes[7] == 0x70 &&
+                (
+                    (bytes[8] == 0x68 && bytes[9] == 0x65 && bytes[10] == 0x69 && bytes[11] == 0x63) || // heic
+                    (bytes[8] == 0x68 && bytes[9] == 0x65 && bytes[10] == 0x69 && bytes[11] == 0x66)    // heif
+                ))
+                return "image/heic";
+
+            // SVG (XML-based, so no fixed binary signature)
+            var header = System.Text.Encoding.UTF8.GetString(bytes, 0, Math.Min(bytes.Length, 200)).TrimStart();
+            if (header.StartsWith("<svg", StringComparison.OrdinalIgnoreCase) ||
+                header.Contains("<svg", StringComparison.OrdinalIgnoreCase))
+                return "image/svg+xml";
+
+            return "application/octet-stream";
         }
     }
 }
