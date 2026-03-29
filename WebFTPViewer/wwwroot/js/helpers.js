@@ -3,7 +3,6 @@
 window.helpers.openFileDialog = (id) => {
     document.getElementById(id)?.click();
 };
-window.helpers = window.helpers || {};
 
 window.helpers.registerDragEvents = (container, dotnet) => {
     if (!container || !dotnet) {

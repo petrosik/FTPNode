@@ -1,8 +1,15 @@
-# Overview
+![Logo](/GitStuff/FtpNodeLogo1.svg)
 
-A configurable web-based FTP client built with Blazor. It provides a browser interface for managing files on FTP servers with a modular architecture that allows extensive configuration and customization of features, behaviors, and integrations.
+A configurable web-based FTP/S client built with Blazor. It provides a browser interface for managing files on FTP servers with a modular architecture that allows extensive configuration and customization of features, behaviors, and integrations.
 
-**Do not forget setup network info for the container** (depending on use case it might need network connection to internet)
+**Do not forget setup network info for the container** (depending on use case it might need network connection to internet or simple bridge to ftp container)
+
+![Preview](/GitStuff/preview.png)
+
+# License 
+
+This project is free to use for non-commercial and/or personal use.  
+For commercial use, contact the creator.
 
 # Config Overview
 
@@ -139,3 +146,8 @@ Example:
   - Default: ["B", "KB", "MB", "GB", "TB", "PB"]
   - Description: Defines the display labels for each size unit
   - Note: Additional values can be provided to support larger units.
+  
+- **enablecerttrustfunction**
+  - Type: `bool`
+  - Default: false
+  - Description: Determines if frontend remembers certificates and skips asking user to confirm

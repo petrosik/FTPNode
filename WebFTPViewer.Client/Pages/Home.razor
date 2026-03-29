@@ -292,6 +292,15 @@ else
             <button class="btn-primary" style="padding:10%" @onclick="@(async () => { CertWindowOpen = false; _certQuestion.TrySetResult(true); })" tabindex="0">Accept</button>
             <button class="secondary-button" style="padding:10%" @onclick="@(async () => { CertWindowOpen = false; _certQuestion.TrySetResult(false); })" tabindex="1">Cancel</button>
         </div>
+        @if (State.Settings.TryGetValue("enablecerttrustfunction", out var val) && bool.TryParse(val, out var va) && va)
+        {
+            <div style="display:flex;flex-direction:row;justify-content:center">
+                <label>
+                    Remember Certificate:
+                    <InputCheckbox @bind-Value=RememberCert @oninput="OnRememberCertChange" />
+                </label>
+            </div>
+        }
     </OverlayWindow>
 }
 @if (PermsChangeOpen)
@@ -409,6 +418,7 @@ else
         { "UTF-32", Encoding.UTF32 }
     };
     private bool IsSwitchingDir = false;
+    private bool RememberCert = false;
 
     private readonly SemaphoreSlim _upDownSemaphore = new(1, 1);
 
@@ -550,24 +560,24 @@ else
     private async void ClearQues()
     {
         foreach (var item in DownloadQue)
-        { 
-            if (item.Value.Proggress >= 100 || item.Value.Proggress<0)
-            DownloadQue.Remove(item.Key);
+        {
+            if (item.Value.Proggress >= 100 || item.Value.Proggress < 0)
+                DownloadQue.Remove(item.Key);
         }
-        if (DownloadQue.Count == 0 && UploadQue.Count == 0) 
-        { 
-            DownloadRunning = false; 
-            await PreventClosing(DownloadRunning); 
+        if (DownloadQue.Count == 0 && UploadQue.Count == 0)
+        {
+            DownloadRunning = false;
+            await PreventClosing(DownloadRunning);
         }
         foreach (var item in UploadQue)
         {
             if (item.Value.Proggress >= 100 || item.Value.Proggress < 0)
-            UploadQue.Remove(item.Key);
+                UploadQue.Remove(item.Key);
         }
-        if (UploadQue.Count == 0) 
-        { 
-            UploadRunning = false; 
-            await PreventClosing(UploadRunning); 
+        if (UploadQue.Count == 0)
+        {
+            UploadRunning = false;
+            await PreventClosing(UploadRunning);
         }
     }
     [JSInvokable]
@@ -625,7 +635,20 @@ else
 
 
             var cert = await Hub.InvokeAsync<CertificateDto?>("GetCert", LoginStuff.Host, LoginStuff.Port);
-            if (cert != null)
+            var usecerttrust = State.Settings.TryGetValue("enablecerttrustfunction", out var val) && bool.TryParse(val, out var va) && va;
+            var skipcertcheck = false;
+            if (usecerttrust)
+            {
+                try
+                {
+                    var certs = JsonSerializer.Deserialize<List<string>>(await JS.InvokeAsync<string>("localStorage.getItem", "trustedCerts"));
+                    skipcertcheck = certs.Contains(cert.Thumbprint);
+                    LoginStuff.AcceptCert = true;
+                    LoginStuff.OriginalCertThumbprint = cert.Thumbprint;
+                }
+                catch { }
+            }
+            if (cert != null && !skipcertcheck)
             {
                 var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 CertWindowOpen = true;
@@ -650,6 +673,10 @@ else
             {
                 LoggedIn = true;
                 GetDirectory(Path);
+            }
+            else
+            {
+                LoginStuff.Password = "";
             }
         }
         Connecting = false;
@@ -1030,6 +1057,30 @@ else
         RememberMe.RememberMe = newValue;
         if (!newValue) { await JS.InvokeVoidAsync("localStorage.removeItem", "rememberMe"); return; }
         await SaveRememberMe();
+    }
+    private async Task OnRememberCertChange(ChangeEventArgs e)
+    {
+        bool newValue = (bool)e.Value;
+        List<string>? certs = null;
+        try
+        {
+            certs = JsonSerializer.Deserialize<List<string>>(await JS.InvokeAsync<string>("localStorage.getItem", "trustedCerts"));
+        }
+        catch { }
+        if (certs == null && newValue && Certificate != null)
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", "trustedCerts", JsonSerializer.Serialize(new List<string>() { Certificate.Thumbprint }));
+        }
+        else if (newValue && Certificate != null && certs != null && !certs.Contains(Certificate.Thumbprint))
+        {
+            certs.Add(Certificate.Thumbprint);
+            await JS.InvokeVoidAsync("localStorage.setItem", "trustedCerts", JsonSerializer.Serialize(certs));
+        }
+        else if (!newValue && certs != null && Certificate != null && certs.Contains(Certificate.Thumbprint))
+        {
+            certs.Remove(Certificate.Thumbprint);
+            await JS.InvokeVoidAsync("localStorage.setItem", "trustedCerts", JsonSerializer.Serialize(certs));
+        }
     }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

@@ -18,7 +18,7 @@ namespace WebFTPViewer.Hubs
             { 
                 "host", "port", "passivemode", "uploadlimit", 
                 "maxfileuploadsize", "simultaneousupdown", "maxeditsize", "disablepermchange", 
-                "enabledebug", "maxfileuploadatonce", "sizeunitformat",
+                "enabledebug", "maxfileuploadatonce", "sizeunitformat", "enablecerttrustfunction"
             };
 
         public FTPHub(ISharedStorage sharedService)
@@ -54,6 +54,9 @@ namespace WebFTPViewer.Hubs
                 // Open FTP stream for writing
                 try
                 {
+                    var check = await CheckConnection(Context.ConnectionId);
+                    if (!check.First) { return check.Second; }
+
                     var ftpClient = await SetupClient(clientPair.LoginJson, true);
                     ftpClient.First.SetWorkingDirectory(metadata.UploadPath);
                     var ftpStreams = ftpClient.First.OpenWrite(metadata.UploadPath.EndsWith('/') ? metadata.UploadPath + metadata.Name : metadata.UploadPath + "/" + metadata.Name);
@@ -125,6 +128,9 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> DownloadStart(string filename, string path)
         {
+            var check = await CheckConnection(Context.ConnectionId);
+            if (!check.First) { return $"false | {check.Second}"; }
+
             if (!_sharedStorage._ftpClients.TryGetValue(Context.ConnectionId, out var clientPair))
                 return "false | Error: FTP client not found.";
 
@@ -282,7 +288,8 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> GetCurrentDirectory()
         {
-            if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return null;
+            var check = await CheckConnection(Context.ConnectionId);
+            if (!check.First) { return null; }
             try
             {
                 var wd = _sharedStorage._ftpClients[Context.ConnectionId].MainClient.GetWorkingDirectory();
@@ -307,10 +314,13 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<bool> Goto(string targetPath)
         {
-            if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return false;
+            var check = await CheckConnection(Context.ConnectionId);
+            if (!check.First) { return false; }
+
             if (_sharedStorage._ftpClients[Context.ConnectionId].MainClient.DirectoryExists(targetPath))
             {
                 _sharedStorage._ftpClients[Context.ConnectionId].MainClient.SetWorkingDirectory(targetPath);
+                _sharedStorage._ftpClients[Context.ConnectionId].CurrentPath = targetPath;
                 return true;
             }
             else
@@ -320,7 +330,8 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> Delete(string target)
         {
-            if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+            var check = await CheckConnection(Context.ConnectionId);
+            if (!check.First) { return $"false | {check.Second}"; }
 
             if (_sharedStorage._ftpClients.Any(x => x.Value.DownloadQue.ContainsKey(target) && x.Value.LoginJson.Host == _sharedStorage._ftpClients[Context.ConnectionId].LoginJson.Host && x.Value.LoginJson.Port == _sharedStorage._ftpClients[Context.ConnectionId].LoginJson.Port))
             {
@@ -357,10 +368,12 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> Rename(string from, string dest)
         {
+            if (string.IsNullOrWhiteSpace(dest)) return "false | Empty New Name";
+            var check = await CheckConnection(Context.ConnectionId);
+            if (!check.First) { return $"false | {check.Second}"; }
+
             try
             {
-                if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
-                if (string.IsNullOrWhiteSpace(dest)) return "false | Empty New Name";
 
                 _sharedStorage._ftpClients[Context.ConnectionId].MainClient.Rename(from, dest.Trim());
                 return "true";
@@ -372,11 +385,12 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> CreateFolder(string name)
         {
+            if (string.IsNullOrWhiteSpace(name)) return "false | Empty New Name";
+            var check = await CheckConnection(Context.ConnectionId);
+            if (!check.First) { return $"false | {check.Second}"; }
+
             try
             {
-                if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
-                if (string.IsNullOrWhiteSpace(name)) return "false | Empty New Name";
-
                 return _sharedStorage._ftpClients[Context.ConnectionId].MainClient.CreateDirectory(name.Trim()).ToString();
             }
             catch (Exception e)
@@ -386,7 +400,9 @@ namespace WebFTPViewer.Hubs
         }
         public async Task<string> ChangePermisson(string name, int permissons)
         {
-            if (!_sharedStorage._ftpClients.ContainsKey(Context.ConnectionId)) return "false | Error Connection Id Missing 404";
+            var check = await CheckConnection(Context.ConnectionId);
+            if (!check.First) { return $"false | {check.Second}"; }
+
             try
             {
                 _sharedStorage._ftpClients[Context.ConnectionId].MainClient.Chmod(name, permissons);
@@ -467,6 +483,51 @@ namespace WebFTPViewer.Hubs
                 Console.WriteLine($"Error initializing FTP client: {ex.Message}");
                 return new(null, $"false | {ex.Message}");
             }
+        }
+        public async Task<Pair<bool,string>> CheckConnection(string id)
+        {
+            if (!_sharedStorage._ftpClients.ContainsKey(id))
+            {
+                return new(false, "FTP client not found.");
+            }
+            if (!_sharedStorage._ftpClients[id].MainClient.IsConnected)
+            {
+                try
+                {
+                    _sharedStorage._ftpClients[id].MainClient.Dispose();
+                    var ftpClient = await SetupClient(_sharedStorage._ftpClients[id].LoginJson);
+                    if (ftpClient.First == null)
+                    {
+                        return new(false,ftpClient.Second);
+                    }
+                    _sharedStorage._ftpClients[id].MainClient = ftpClient.First;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Error checking connection: {e.Message}");
+                    return new(false,e.Message);
+                }
+            }
+            else
+            {
+                try
+                {
+                    _sharedStorage._ftpClients[id].MainClient.Noop(true);
+                    _sharedStorage._ftpClients[id].MainClient.GetReply();
+                }
+                catch
+                {
+                    _sharedStorage._ftpClients[id].MainClient.Dispose();
+                    var ftpClient = await SetupClient(_sharedStorage._ftpClients[id].LoginJson);
+                    if (ftpClient.First == null)
+                    {
+                        return new(false, ftpClient.Second);
+                    }
+                    _sharedStorage._ftpClients[id].MainClient = ftpClient.First;
+                    _sharedStorage._ftpClients[Context.ConnectionId].MainClient.SetWorkingDirectory(_sharedStorage._ftpClients[Context.ConnectionId].CurrentPath);
+                }
+            }
+                return new(true, null);
         }
         public async Task<X509Certificate2?> GetFtpServerCertificate(string host, int port)
         {
