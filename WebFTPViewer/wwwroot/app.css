@@ -179,6 +179,15 @@ h1:focus {
     overflow-x: hidden;
     overflow-y: auto;
 }
+.scrollable-hidden {
+    overflow: auto; /* scrollable */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+}
+
+    .scrollable-hidden::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Edge */
+    }
 
 .checkered-bg {
     position: relative;

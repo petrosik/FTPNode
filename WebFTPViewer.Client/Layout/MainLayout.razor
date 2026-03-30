@@ -2,16 +2,17 @@
 @using Shared;
 @inherits LayoutComponentBase
 @inject AppState State
+@inject NavigationManager Nav
 <div class="page">
     <div class="sidebar">
         <NavMenu />
     </div>
 
     <main>
-        <div class="top-row" style="gap:1.5vw; padding:0.3rem; display:flex; justify-content:flex-end;  align-items:center;">
+        <div class="top-row scrollable-hidden" style="overflow-x:scroll; overflow-y:hidden; white-space:nowrap; gap:1.5vw; padding:0.3rem; display:@(Nav.ToBaseRelativePath(Nav.Uri) == "settings" ? "none" : "flex"); justify-content:flex-end;  align-items:center;">
             @if (State.Selected != null)
             {
-                <div style="height:100%; display:flex; gap:0.2rem; width:fit-content;">
+                <div style="height:100%; display:flex; gap:0.2rem; flex-shrink: 0; min-width: max-content; margin-left: auto;">
                     @if (Utils.AllowedActions(State.Selected, AllowedAction.Delete,text: out _))
                     {
                         <ConfirmButton class="control-button" title="Delete Selected" DialogQuestion="@($"Are you sure you want to delete {State.Selected.Name}?")" OnClick="State.TriggerDelete">
@@ -63,7 +64,7 @@
             </div>
         </div>
 
-        <article style="padding-top:0.5rem; padding-left:0.5rem; padding-right:0.5rem;" @onclick="() => { State.Selected = null; }">
+        <article style="padding-top:@(Nav.ToBaseRelativePath(Nav.Uri) == "settings" ? "4rem" : "0.5rem"); padding-left:0.5rem; padding-right:0.5rem;" @onclick="() => { State.Selected = null; }">
             @Body
         </article>
     </main>

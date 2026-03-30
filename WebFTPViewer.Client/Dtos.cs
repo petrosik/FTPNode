@@ -24,6 +24,19 @@ namespace WebFTPViewer.Client
             Proggress = proggress;
         }
     }
+    [JsonSerializable(typeof(TrustedCertDto))]
+    public class TrustedCertDto
+    {
+        public string Name { get; set; }
+        public string Thumbprint { get; set; }
+        public DateTime Added { get; set; }
+        public TrustedCertDto(string name, string thumbprint, DateTime added)
+        {
+            Name = name;
+            Thumbprint = thumbprint;
+            Added = added;
+        }
+    }
     public class InMemoryBrowserFile : IBrowserFile
     {
         private readonly byte[] _data;

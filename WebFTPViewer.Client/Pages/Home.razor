@@ -15,6 +15,7 @@
 @inject NavigationManager Nav
 @rendermode InteractiveWebAssembly
 
+<PageTitle>@($"{(State.Settings.TryGetValue("title", out var v) ? v : "FTP Node")}{(CurrDirPath.Count > 0 ? $" - {(CurrDirPath.Count > 1 ?"..":"")}/{CurrDirPath.Last()}" : "")}")</PageTitle>
 @if (!LoggedIn)
 {
     //use overlaywindow later
@@ -362,7 +363,7 @@ else
     private bool Loading { get; set; } = true;
     private string Error { get; set; } = "";
     private Pair<string, List<FtpItemDto>>? CurrentDir { get; set; } = null;
-    private List<string> CurrDirPath { get; set; } = null;
+    private List<string> CurrDirPath { get; set; } = new();
     private LinkedList<string> History { get; set; } = new();
     private LinkedListNode<string>? CurrentHis { get; set; } = null;
     private bool isDragging = false;
@@ -641,8 +642,8 @@ else
             {
                 try
                 {
-                    var certs = JsonSerializer.Deserialize<List<string>>(await JS.InvokeAsync<string>("localStorage.getItem", "trustedCerts"));
-                    skipcertcheck = certs.Contains(cert.Thumbprint);
+                    var certs = JsonSerializer.Deserialize<List<TrustedCertDto>>(await JS.InvokeAsync<string>("localStorage.getItem", "trustedCerts"));
+                    skipcertcheck = certs.Any(x=>x.Thumbprint == cert.Thumbprint);
                     LoginStuff.AcceptCert = true;
                     LoginStuff.OriginalCertThumbprint = cert.Thumbprint;
                 }
@@ -716,6 +717,9 @@ else
             return;
 
         var relativePath = $"/{Nav.ToBaseRelativePath(e.Location)}";
+
+        if (relativePath == "/settings")
+            return;
 
         var next = CurrentHis?.Next;
         var prev = CurrentHis?.Previous;
@@ -1061,24 +1065,28 @@ else
     private async Task OnRememberCertChange(ChangeEventArgs e)
     {
         bool newValue = (bool)e.Value;
-        List<string>? certs = null;
+        List<TrustedCertDto>? certs = null;
         try
         {
-            certs = JsonSerializer.Deserialize<List<string>>(await JS.InvokeAsync<string>("localStorage.getItem", "trustedCerts"));
+            certs = JsonSerializer.Deserialize<List<TrustedCertDto>>(await JS.InvokeAsync<string>("localStorage.getItem", "trustedCerts"));
         }
         catch { }
         if (certs == null && newValue && Certificate != null)
         {
-            await JS.InvokeVoidAsync("localStorage.setItem", "trustedCerts", JsonSerializer.Serialize(new List<string>() { Certificate.Thumbprint }));
+            await JS.InvokeVoidAsync("localStorage.setItem", "trustedCerts", JsonSerializer.Serialize(new List<TrustedCertDto>() { new(Certificate.Subject, Certificate.Thumbprint, DateTime.Now) }));
         }
-        else if (newValue && Certificate != null && certs != null && !certs.Contains(Certificate.Thumbprint))
+        else if (newValue && Certificate != null && certs != null && !certs.Any(x=>x.Thumbprint == Certificate.Thumbprint))
         {
-            certs.Add(Certificate.Thumbprint);
+            certs.Add(new(Certificate.Subject,Certificate.Thumbprint,DateTime.Now));
             await JS.InvokeVoidAsync("localStorage.setItem", "trustedCerts", JsonSerializer.Serialize(certs));
         }
-        else if (!newValue && certs != null && Certificate != null && certs.Contains(Certificate.Thumbprint))
+        else if (!newValue && certs != null && Certificate != null && certs.Any(x => x.Thumbprint == Certificate.Thumbprint))
         {
-            certs.Remove(Certificate.Thumbprint);
+            var item = certs.FirstOrDefault(x => x.Thumbprint == Certificate.Thumbprint);
+            if (item != null)
+            {
+                certs.Remove(item);
+            }
             await JS.InvokeVoidAsync("localStorage.setItem", "trustedCerts", JsonSerializer.Serialize(certs));
         }
     }
@@ -1396,7 +1404,7 @@ else
         State.PermChangeClicked -= ChangePerms;
         State.OnChange -= HandleStateChange;
         Nav.LocationChanged -= OnLocationChanged;
-        ClearHubConn();
+        Logout();
     }
     private async void HandleStateChange()
     {

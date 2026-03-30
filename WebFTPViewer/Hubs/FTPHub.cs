@@ -18,7 +18,8 @@ namespace WebFTPViewer.Hubs
             { 
                 "host", "port", "passivemode", "uploadlimit", 
                 "maxfileuploadsize", "simultaneousupdown", "maxeditsize", "disablepermchange", 
-                "enabledebug", "maxfileuploadatonce", "sizeunitformat", "enablecerttrustfunction"
+                "enabledebug", "maxfileuploadatonce", "sizeunitformat", "enablecerttrustfunction",
+                "title",
             };
 
         public FTPHub(ISharedStorage sharedService)
@@ -35,6 +36,10 @@ namespace WebFTPViewer.Hubs
                     settings.Add(new() { Name = item, Value = val });
             }
             settings.Add(new() { Name = "publickey", Value = _sharedStorage.PublicKey });
+            if (!settings.Any(x=>x.Name == "title"))
+            {
+                settings.Add(new() { Name = "title", Value = "FTP Node" });
+            }
 
             await Clients.Caller.SendAsync("ReceiveInitData", settings);
             await base.OnConnectedAsync();

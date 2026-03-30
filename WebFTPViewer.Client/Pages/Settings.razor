@@ -1,0 +1,38 @@
+﻿@using Shared
+@using System.Text.Json
+@using WebFTPViewer.Client.Components
+@inject AppState State
+@inject IJSRuntime JS
+@page "/settings"
+
+<PageTitle>@($"{(State.Settings.TryGetValue("title", out var v) ? v : "FTP Node")} - Settings")</PageTitle>
+<h2>Theme</h2>
+<p>Coming Soon</p>
+<h2>Trusted Certificates</h2>
+<div style="display:grid; grid-template-columns: 20fr 40fr 20fr 5fr">
+    @foreach (var item in certs)
+    {
+        <p style="margin:0">@(item.Name.StartsWith("CN=") ? item.Name.Substring(3) : item.Name)</p>
+        <p style="margin:0; overflow-x:hidden; text-overflow:ellipsis" title="@item.Thumbprint">@item.Thumbprint</p>
+        <p style="margin:0; text-align:center">@item.Added.ToSaneString()</p>
+        <i style="cursor:pointer; display:flex; justify-content: center; align-items: center;" title="Delete" class="fa-solid fa-trash-can" @onclick="() => Remove(item)"></i>
+    }
+</div>
+@code {
+    private List<TrustedCertDto> certs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            certs = JsonSerializer.Deserialize<List<TrustedCertDto>>(await JS.InvokeAsync<string>("localStorage.getItem", "trustedCerts"));
+        }
+        catch { }
+        await base.OnInitializedAsync();
+    }
+    private async Task Remove(TrustedCertDto item)
+    {
+        certs.Remove(item);
+        await JS.InvokeVoidAsync("localStorage.setItem", "trustedCerts", JsonSerializer.Serialize(certs));
+    }
+}
