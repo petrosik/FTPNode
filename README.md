@@ -15,9 +15,9 @@ For commercial use, contact the creator.
 
 You can run this project using Docker by pulling the official Docker image.
 
-\`\`\`bash
+```bash
 docker pull petrosik/ftpnode:latest
-\`\`\`
+```
 
 # Config Overview
 
