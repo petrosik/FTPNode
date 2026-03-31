@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace WebFTPViewer.Controllers
+namespace FTPNode.Controllers
 {
     [Route("api/ftp")]
     [ApiController]

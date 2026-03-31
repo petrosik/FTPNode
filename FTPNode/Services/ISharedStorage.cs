@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Security.Cryptography;
 
-namespace WebFTPViewer.Services
+namespace FTPNode.Services
 {
     public interface ISharedStorage
     {

@@ -6,4 +6,4 @@ EXPOSE 8080
 EXPOSE 8081
 COPY . /app/
 
-ENTRYPOINT ["dotnet","WebFTPViewer.dll"]
+ENTRYPOINT ["dotnet","FTPNode.dll"]

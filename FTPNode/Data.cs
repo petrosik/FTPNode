@@ -2,7 +2,7 @@
 using Shared;
 using System.Collections.Concurrent;
 
-namespace WebFTPViewer
+namespace FTPNode
 {
     public class FTPStorage
     {

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
 using System.Text.Json.Serialization;
 
-namespace WebFTPViewer.Client
+namespace FTPNode.Client
 {
     [JsonSerializable(typeof(RememberMeDto))]
     public class RememberMeDto

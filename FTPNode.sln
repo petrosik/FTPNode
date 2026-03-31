@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36414.22
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{B2DA6F07-C2F4-45F1-96EF-9A3BB30E0C78}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FTPNode", "FTPNode\FTPNode.csproj", "{860FF87E-E7BC-980D-ADA3-BC7DCE9768BB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FTPNode.Client", "FTPNode.Client\FTPNode.Client.csproj", "{FDF80CF6-0728-6A47-2463-6453651E99A4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B2DA6F07-C2F4-45F1-96EF-9A3BB30E0C78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2DA6F07-C2F4-45F1-96EF-9A3BB30E0C78}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2DA6F07-C2F4-45F1-96EF-9A3BB30E0C78}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2DA6F07-C2F4-45F1-96EF-9A3BB30E0C78}.Release|Any CPU.Build.0 = Release|Any CPU
+		{860FF87E-E7BC-980D-ADA3-BC7DCE9768BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{860FF87E-E7BC-980D-ADA3-BC7DCE9768BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{860FF87E-E7BC-980D-ADA3-BC7DCE9768BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{860FF87E-E7BC-980D-ADA3-BC7DCE9768BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FDF80CF6-0728-6A47-2463-6453651E99A4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FDF80CF6-0728-6A47-2463-6453651E99A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FDF80CF6-0728-6A47-2463-6453651E99A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FDF80CF6-0728-6A47-2463-6453651E99A4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {72282B88-EA14-45DE-8353-5A6C3E2CD076}
+	EndGlobalSection
+EndGlobal

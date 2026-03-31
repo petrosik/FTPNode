@@ -7,9 +7,9 @@ using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
-using WebFTPViewer.Services;
+using FTPNode.Services;
 
-namespace WebFTPViewer.Hubs
+namespace FTPNode.Hubs
 {
     public class FTPHub : Hub
     {

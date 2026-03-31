@@ -11,6 +11,14 @@ A configurable web-based FTP/S client built with Blazor. It provides a browser i
 This project is free to use for non-commercial and/or personal use.  
 For commercial use, contact the creator.
 
+# Installing via Docker
+
+You can run this project using Docker by pulling the official Docker image.
+
+\`\`\`bash
+docker pull petrosik/ftpnode:latest
+\`\`\`
+
 # Config Overview
 
 This application uses a layered configuration system to allow maximum flexibility. Configuration values can come from:

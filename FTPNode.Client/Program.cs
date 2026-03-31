@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Shared;
 
-namespace WebFTPViewer.Client
+namespace FTPNode.Client
 {
     internal class Program
     {

@@ -12,12 +12,13 @@
     <PackageReference Include="FluentFTP" Version="53.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="9.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="10.0.2" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Shared\Shared.csproj" />
-    <ProjectReference Include="..\WebFTPViewer.Client\WebFTPViewer.Client.csproj" />
+    <ProjectReference Include="..\FTPNode.Client\FTPNode.Client.csproj" />
   </ItemGroup>
   
  <ItemGroup Condition="'$(Configuration)'=='Debug'">

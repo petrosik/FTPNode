@@ -1,10 +1,10 @@
 using Shared;
 using System.Text.Json;
-using WebFTPViewer.Components;
-using WebFTPViewer.Hubs;
-using WebFTPViewer.Services;
+using FTPNode.Components;
+using FTPNode.Hubs;
+using FTPNode.Services;
 
-namespace WebFTPViewer
+namespace FTPNode
 {
     public class Program
     {
