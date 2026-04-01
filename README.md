@@ -40,7 +40,8 @@ Example:
 ```bash
 docker run -p 8080:80
   -v /host/path/config:/app/config
-  my-ftp-web-view
+  --name my-ftp-node
+  petrosik/ftpnode:latest
 ```
 
 - `/host/path/config` is a folder on the host machine.
@@ -59,7 +60,8 @@ Example:
 docker run -p 8080:80
   -e FTP__Title="FTP Custom Title"
   -e FTP__Port="21"
-  my-ftp-web-view
+  --name my-ftp-node
+  petrosik/ftpnode:latest
 ```
 
 - Note: Use double underscores `__` to replace `:` in JSON paths.
