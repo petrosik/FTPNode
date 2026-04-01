@@ -1,8 +1,11 @@
-using Shared;
-using System.Text.Json;
-using FTPNode.Components;
+﻿using FTPNode.Components;
 using FTPNode.Hubs;
 using FTPNode.Services;
+using Microsoft.AspNetCore.DataProtection;
+using Shared;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
 
 namespace FTPNode
 {
@@ -11,6 +14,27 @@ namespace FTPNode
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            if (!builder.Environment.IsDevelopment())
+            {
+                Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "certs"));
+                var certPath = builder.Configuration["Kestrel:Certificates:Default:Path"];
+                var certPassword = builder.Configuration["Kestrel:Certificates:Default:Password"];
+  
+                var cert = CreateOrLoadSelfSignedCertificate("localhost", certPath, certPassword);
+
+
+                builder.WebHost.ConfigureKestrel(options =>
+                {
+                    options.ListenAnyIP(8080);
+                    options.ListenAnyIP(8081, listenOptions => listenOptions.UseHttps(cert));
+                });
+                var keyPath = Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys");
+                Directory.CreateDirectory(keyPath);
+                builder.Services.AddDataProtection()
+                    .ProtectKeysWithCertificate(cert)
+                    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys")))
+                    .SetApplicationName("FTPNode");
+            }
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
@@ -115,6 +139,48 @@ namespace FTPNode
                 c => c.Key,
                 c => ToDictionary(c)
             );
+        }
+
+        private static X509Certificate2 CreateOrLoadSelfSignedCertificate(string hostname, string certPath, string password)
+        {
+            // If a certificate file already exists, load it
+            if (!string.IsNullOrEmpty(certPath) && File.Exists(certPath))
+            {
+                return X509CertificateLoader.LoadPkcs12FromFile(certPath, password);
+            }
+
+            // Otherwise, create a new self‑signed cert
+            using var rsa = RSA.Create(2048);
+            var request = new CertificateRequest(
+                $"CN={hostname}",
+                rsa,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+
+            request.CertificateExtensions.Add(
+                new X509BasicConstraintsExtension(false, false, 0, false));
+            request.CertificateExtensions.Add(
+                new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+
+            using var cert = request.CreateSelfSigned(
+                DateTimeOffset.Now.AddDays(-1),
+                DateTimeOffset.Now.AddYears(1)
+            );
+
+            // Export to PFX with password
+            var pfxBytes = cert.Export(X509ContentType.Pfx, password);
+
+            // Ensure directory exists
+            var directory = Path.GetDirectoryName(certPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            File.WriteAllBytes(certPath, pfxBytes);
+
+            // Load via X509CertificateLoader
+            return X509CertificateLoader.LoadPkcs12FromFile(certPath, password);
         }
     }
 }

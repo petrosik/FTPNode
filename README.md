@@ -2,8 +2,6 @@
 
 A configurable web-based FTP/S client built with Blazor. It provides a browser interface for managing files on FTP servers with a modular architecture that allows extensive configuration and customization of features, behaviors, and integrations.
 
-**Do not forget setup network info for the container** (depending on use case it might need network connection to internet or simple bridge to ftp container)
-
 ![Preview](/GitStuff/preview.png)
 
 # License 
@@ -18,6 +16,10 @@ You can run this project using Docker by pulling the official Docker image.
 ```bash
 docker pull petrosik/ftpnode:latest
 ```
+
+[Example docker-compose.yml](/GitStuff/docker-compose.yml)
+
+**Do not forget setup network info for the container** (depending on use case it might need network connection to internet or simple bridge to ftp container)
 
 # Config Overview
 

@@ -1,0 +1,22 @@
+services:
+  ftp-web:
+    image: petrosik/ftpnode:latest
+    container_name: ftp-node
+    ports:
+      - "8080:8080" #http
+      - "8081:8081" #https
+    volumes:
+      - ./config:/app/config
+      - ./keys:/app/DataProtection-Keys
+      - ./certs:/app/certs #For certificates if needed (don't forget to change Kestrel:Certificates:default:Path if you naming your certifivate something else then cert.pfx)
+    environment: #One way of configuring the app
+      FTP__Title: "FTP Custom Title"
+      FTP__Host: "172.0.0.1"
+      FTP__Port: "21"
+    networks:
+      - ftp-net
+    restart: unless-stopped
+
+networks: #Example network if you have a ftp server hosted on same machine
+  ftp-net:
+    driver: bridge
