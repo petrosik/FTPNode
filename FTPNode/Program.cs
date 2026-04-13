@@ -17,9 +17,19 @@ namespace FTPNode
             if (!builder.Environment.IsDevelopment())
             {
                 Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "certs"));
+
                 var certPath = builder.Configuration["Kestrel:Certificates:Default:Path"];
+                if (certPath == null)
+                {
+                    certPath = "certs/cert.pfx";
+                    builder.Configuration["Kestrel:Certificates:Default:Path"] = certPath;
+                }
                 var certPassword = builder.Configuration["Kestrel:Certificates:Default:Password"];
-  
+                if (certPassword == null)
+                {
+                    certPassword = "defaultStrongPassword123!";
+                    builder.Configuration["Kestrel:Certificates:Default:Password"] = certPassword;
+                }
                 var cert = CreateOrLoadSelfSignedCertificate("localhost", certPath, certPassword);
 
 
@@ -103,6 +113,24 @@ namespace FTPNode
             {
                 foreach (var item in ftpsettings.GetChildren())
                 {
+                    if (item.Key.ToLower() == "availablethemes" && !builder.Environment.IsDevelopment())
+                    {
+                        var themes = item.Get<List<string>>();
+                        if (themes != null)
+                        {
+                            themes.Remove("light");
+                            themes.Remove("dark");
+                            sharedService.SetArg("availablethemestrimmed", themes);
+                            foreach (var item1 in themes)
+                            {
+                                if (File.Exists(Path.Combine(builder.Environment.ContentRootPath, "config",$"{item1}.css")))
+                                    File.Move(Path.Combine(builder.Environment.ContentRootPath, "config",$"{item1}.css"), Path.Combine(builder.Environment.ContentRootPath, "wwwroot", $"{item1}.css"));
+                                else
+                                    Console.WriteLine($"Warning: Theme CSS file for '{item1}' not found at 'config/{item1}.css'. Skipping copy.");
+                            }
+                        }
+                    }
+
                     if (item.GetChildren().Any())
                     {
                         var dict = ToDictionary(item);

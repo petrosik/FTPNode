@@ -16,6 +16,9 @@
 @rendermode InteractiveWebAssembly
 
 <PageTitle>@($"{(State.Settings.TryGetValue("title", out var v) ? v : "FTP Node")}{(CurrDirPath.Count > 0 ? $" - {(CurrDirPath.Count > 1 ?"..":"")}/{CurrDirPath.Last()}" : "")}")</PageTitle>
+<div>
+    <InputFile id="fileInput" class="file-input-overlay" OnChange="HandleFileSelected" multiple />
+</div>
 @if (!LoggedIn)
 {
     //use overlaywindow later
@@ -90,20 +93,20 @@
         </div>
     </div>
 }
-@if (UploadRunning || DownloadRunning || UploadQue.Count > 0 || DownloadQue.Count > 0)
+@if (UploadRunning || DownloadRunning || State.UploadQue.Count > 0 || DownloadQue.Count > 0)
 {
     <div style="overflow-y:auto; overflow-x:hidden; padding:1vh; padding-right:2vh; z-index:2010; display:flex; flex-direction:column; position:fixed; right:2vh; bottom:2vh; width:25vw; height:20vh; min-width:250px; min-height:50px; box-shadow:2px 2px 10px rgba(0,0,0,0.5); border-radius:4px">
         <div style="position:absolute; top:-25px; right:-25px; width:50px; height:50px; background-color:#eeeeee; z-index:2011; transform: rotate(45deg); transform-origin: center; box-shadow:2px 2px 10px rgba(0,0,0,0.5);">
             <i @onclick="@(ClearQues)" class="fa-solid fa-xmark" title="Clear All Complete" style="transform: rotate(-45deg); position:absolute; top:27px; left:18px; width:20px; height:20px; cursor:pointer"></i>
         </div>
 
-        @foreach (var item in UploadQue)
+        @foreach (var item in State.UploadQue)
         {
             <div style="display:grid; grid-template-columns:10fr 10fr 80fr 10fr">
                 <i class="fa-solid fa-arrow-turn-up" style="color:lightcoral; font-size:1rem; display:flex; align-items:center; justify-content:center;"></i>
                 <i class="fa-regular fa-file" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
                 <h4 style="margin:0; text-wrap-mode:nowrap;text-overflow:ellipsis; overflow:hidden;" title="@item.Value.Name">@item.Value.Name</h4>
-                <button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress.ToString("F2")}%")" @onclick="@(async () => { UploadQue.Remove(item.Key); if (UploadQue.Count == 0) { UploadRunning = false; await PreventClosing(UploadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
+                <button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress.ToString("F2")}%")" @onclick="@(async () => { State.UploadQue.Remove(item.Key); if (State.UploadQue.Count == 0) { UploadRunning = false; await PreventClosing(UploadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
                     @if (item.Value.Proggress < 100)
                     {
                         <svg viewBox="0 0 100 100" style="width:100%; height:100%; position:absolute; top:0; left:0; transform:rotate(-90deg);">
@@ -131,7 +134,7 @@
                 <i class="fa-solid fa-arrow-turn-down" style="color:lightblue; font-size:1rem; display:flex; align-items:center; justify-content:center;"></i>
                 <i class="fa-regular fa-file" style="font-size:1.5rem; display:flex; align-items:center; justify-content:center;"></i>
                 <h4 style="margin:0; text-wrap-mode:nowrap;text-overflow:ellipsis; overflow:hidden;" title="@item.Value.Name">@item.Value.Name</h4>
-                <button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress.ToString("F2")}%")" @onclick="@(async () => { DownloadQue.Remove(item.Key); if (DownloadQue.Count == 0 && UploadQue.Count == 0) { DownloadRunning = false; await PreventClosing(DownloadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
+                <button title="@(item.Value.Proggress < 0 ? item.Value.Problem : $"{item.Value.Proggress.ToString("F2")}%")" @onclick="@(async () => { DownloadQue.Remove(item.Key); if (DownloadQue.Count == 0 && State.UploadQue.Count == 0) { DownloadRunning = false; await PreventClosing(DownloadRunning); } })" style="padding:0; border:none; background-color:transparent; aspect-ratio:1; position:relative; border-radius:50%;">
                     @if (item.Value.Proggress < 100)
                     {
                         <svg viewBox="0 0 100 100" style="width:100%; height:100%; position:absolute; top:0; left:0; transform:rotate(-90deg);">
@@ -186,7 +189,6 @@
         <div class="drag-overlay @(isDragging ? "visible" : "")">
             Drop files here
         </div>
-        <InputFile id="fileInput" class="file-input-overlay" OnChange="HandleFileSelected" multiple />
         <div style="display:grid; grid-template-columns:30px 90fr;">
             @{
                 int index = 0;
@@ -244,7 +246,7 @@ else
         }
         @if (Utils.AllowedActions(State.Selected, AllowedAction.Edit, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out var maxedits) && int.TryParse(maxedits, out var maxe) ? maxe : 1048576))
         {
-            <button class="button-context" @onclick="Edit">
+            <button class="button-context" @onclick="Edit" disabled="@State.UploadQue.Any(x => $"{State.Selected.Name}.tmp" == x.Value.Name && x.Value.Proggress >= 0 && x.Value.Proggress < 100)">
                 Edit
             </button>
         }
@@ -256,7 +258,7 @@ else
         }
         @if (Utils.AllowedActions(State.Selected, AllowedAction.Read, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out maxedits) && int.TryParse(maxedits, out maxe) ? maxe : 1048576))
         {
-            <button class="button-context" @onclick="View">
+            <button class="button-context" @onclick="View" disabled="@State.UploadQue.Any(x => $"{State.Selected.Name}.tmp" == x.Value.Name && x.Value.Proggress >= 0 && x.Value.Proggress < 100)">
                 View
             </button>
         }
@@ -268,7 +270,7 @@ else
         }
         @if (Utils.AllowedActions(State.Selected, AllowedAction.Rename, text: out _))
         {
-            <button class="button-context" @onclick="Rename">
+            <button class="button-context" @onclick="Rename" >
                 Rename
             </button>
         }
@@ -370,7 +372,6 @@ else
     private bool dragEventsRegistered = false;
     private ElementReference containerRef;
     private DotNetObjectReference<Home>? dotnetRef;
-    private Dictionary<string, UploadQueItemDto> UploadQue = new();
     private Dictionary<string, UploadQueItemDto> DownloadQue = new();
     private CertificateDto? Certificate { get; set; } = null;
     private bool CertWindowOpen = false;
@@ -423,7 +424,7 @@ else
 
     private readonly SemaphoreSlim _upDownSemaphore = new(1, 1);
 
-
+    //needs a fix for duplicate triggering cuz of blazor doing weird stuff with page refresh
     private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
         if (!HubGood()) return;
@@ -451,11 +452,11 @@ else
 
         foreach (var file in rofiles)
         {
-            if (UploadQue.TryGetValue(file.Name, out var queueItem) && queueItem.Proggress == 100)
+            if (State.UploadQue.TryGetValue(file.Name, out var queueItem) && queueItem.Proggress == 100)
             {
-                UploadQue.Remove(file.Name);
+                State.UploadQue.Remove(file.Name);
             }
-            else if (UploadQue.ContainsKey(file.Name))
+            else if (State.UploadQue.ContainsKey(file.Name))
             {
                 Error = $"File with the same name '{file.Name}' is already being uploaded";
                 StateHasChanged();
@@ -468,7 +469,7 @@ else
                 continue;
             }
 
-            if (!UploadQue.TryAdd(file.Name, new UploadQueItemDto(file.Name, 0))) continue;
+            if (!State.UploadQue.TryAdd(file.Name, new UploadQueItemDto(file.Name, 0))) continue;
             files.Add(file);
         }
         foreach (var file in files)
@@ -505,7 +506,7 @@ else
 
             if (file.Size == 0)
             {
-                if (!UploadQue.TryGetValue(file.Name, out var queueItem) || queueItem.Proggress < 0)
+                if (!State.UploadQue.TryGetValue(file.Name, out var queueItem) || queueItem.Proggress < 0)
                 {
                     await Hub.InvokeAsync("UploadCancel", file.Name, true);
                     goto skip;
@@ -518,7 +519,7 @@ else
             {
                 while (offset < file.Size)
                 {
-                    if (!UploadQue.TryGetValue(file.Name, out var queueItem) || queueItem.Proggress < 0)
+                    if (!State.UploadQue.TryGetValue(file.Name, out var queueItem) || queueItem.Proggress < 0)
                     {
                         await Hub.InvokeAsync("UploadCancel", file.Name, true);
                         goto skip;
@@ -565,17 +566,17 @@ else
             if (item.Value.Proggress >= 100 || item.Value.Proggress < 0)
                 DownloadQue.Remove(item.Key);
         }
-        if (DownloadQue.Count == 0 && UploadQue.Count == 0)
+        if (DownloadQue.Count == 0 && State.UploadQue.Count == 0)
         {
             DownloadRunning = false;
             await PreventClosing(DownloadRunning);
         }
-        foreach (var item in UploadQue)
+        foreach (var item in State.UploadQue)
         {
             if (item.Value.Proggress >= 100 || item.Value.Proggress < 0)
-                UploadQue.Remove(item.Key);
+                State.UploadQue.Remove(item.Key);
         }
-        if (UploadQue.Count == 0)
+        if (State.UploadQue.Count == 0)
         {
             UploadRunning = false;
             await PreventClosing(UploadRunning);
@@ -602,7 +603,7 @@ else
             return;
         }
 
-        bool uploadsRunning = UploadQue.Any(x => x.Value.Proggress != 100d);
+        bool uploadsRunning = State.UploadQue.Any(x => x.Value.Proggress != 100d);
         bool downloadsRunning = DownloadQue.Any(x => x.Value.Proggress != 100d);
 
         // if (!uploadsRunning)
@@ -735,7 +736,7 @@ else
     }
     private async void Logout()
     {
-        UploadQue.Clear();
+        State.UploadQue.Clear();
         DownloadQue.Clear();
         DownloadRunning = false;
         UploadRunning = false;
@@ -840,18 +841,18 @@ else
             return;
 
         var filename = $"{CurrentModFile}.tmp";
-        if (UploadQue.TryGetValue(filename, out var queueItem) && queueItem.Proggress == 100)
+        if (State.UploadQue.TryGetValue(filename, out var queueItem) && queueItem.Proggress == 100)
         {
-            UploadQue.Remove(filename);
+            State.UploadQue.Remove(filename);
         }
-        else if (UploadQue.ContainsKey(filename))
+        else if (State.UploadQue.ContainsKey(filename))
         {
             Error = $"File with the same name '{filename}' is already being uploaded";
             StateHasChanged();
             return;
         }
 
-        if (!UploadQue.TryAdd(filename, new UploadQueItemDto(filename, 0))) return;
+        if (!State.UploadQue.TryAdd(filename, new UploadQueItemDto(filename, 0))) return;
         await UploadRoutine(new InMemoryBrowserFile(encodings[selectedEncoding].GetBytes(CurrentModFileContent), $"{CurrentModFile}.tmp", "text/plain"));
         var res = await Hub.InvokeAsync<string>("Delete", CurrentModFile);
         if (CheckReturn(res))
@@ -1329,7 +1330,7 @@ else
             });
         Hub.On<Pair>("ForceUploadCancel", async data =>
             {
-                if (UploadQue.TryGetValue(data.Name, out var que))
+                if (State.UploadQue.TryGetValue(data.Name, out var que))
                 {
                     que.Proggress = -1;
                     que.Problem = data.Value;

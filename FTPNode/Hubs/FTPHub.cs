@@ -458,6 +458,7 @@ namespace FTPNode.Hubs
                 var autovalid = _sharedStorage.TryGetArg<string>("validateanycertificate", out var v) && bool.TryParse(v, out var val) ? val : false;
 
                 // Create and connect FTP client when SignalR client connects
+                //will need a fix for 522 session reuse required later
                 var ftpClient = new FtpClient(info.Host, new NetworkCredential(info.Username,UTF8Encoding.UTF8.GetString(_sharedStorage.Decrypt(Convert.FromBase64String(info.Password)))), info.Port)
                 {
                     Config = new FtpConfig

@@ -21,13 +21,13 @@
                     }
                     @if (Utils.AllowedActions(State.Selected, AllowedAction.Edit, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out var maxedits) && int.TryParse(maxedits, out var maxe) ? maxe : 1048576))
                     {
-                        <button class="control-button" title="Edit" @onclick="State.TriggerEdit">
+                        <button class="control-button" title="Edit" @onclick="State.TriggerEdit" disabled="@State.UploadQue.Any(x => $"{State.Selected.Name}.tmp" == x.Value.Name && x.Value.Proggress >= 0 && x.Value.Proggress < 100)">
                             <i style="font-size:2rem" class="fa-solid fa-pen-to-square"></i>
                         </button>
                     }
                     @if (Utils.AllowedActions(State.Selected, AllowedAction.Read, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out maxedits) && int.TryParse(maxedits, out maxe) ? maxe : 1048576))
                     {
-                        <button class="control-button" title="View" @onclick="State.TriggerView">
+                        <button class="control-button" title="View" @onclick="State.TriggerView" disabled="@State.UploadQue.Any(x => $"{State.Selected.Name}.tmp" == x.Value.Name && x.Value.Proggress >= 0 && x.Value.Proggress < 100)">
                             <i style="font-size:2rem" class="fa-solid fa-expand"></i>
                         </button>
                     }

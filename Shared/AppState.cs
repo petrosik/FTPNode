@@ -86,5 +86,6 @@
         }
 
         public bool EditModeText = false;
+        public Dictionary<string, UploadQueItemDto> UploadQue = new();
     }
 }

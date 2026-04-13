@@ -108,4 +108,16 @@ namespace Shared
         public string Issuer { get; set; }
         public string Thumbprint { get; set; }
     }
+    public class UploadQueItemDto
+    {
+        public string Name { get; set; }
+        public string Type { get; set; }
+        public double Proggress { get; set; } = 0;
+        public string? Problem { get; set; } = null;
+        public UploadQueItemDto(string name, double proggress)
+        {
+            Name = name;
+            Proggress = proggress;
+        }
+    }
 }

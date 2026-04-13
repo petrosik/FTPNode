@@ -157,9 +157,22 @@ Example:
   - Type: `string[]`
   - Default: ["B", "KB", "MB", "GB", "TB", "PB"]
   - Description: Defines the display labels for each size unit
-  - Note: Additional values can be provided to support larger units.
+  - Note: Additional values can be provided to support larger units
   
 - **enablecerttrustfunction**
   - Type: `bool`
   - Default: false
-  - Description: Determines if frontend remembers certificates and skips asking user to confirm
+  - Description: Determines if frontend is allowed to remember certificates and skips asking user to confirm
+
+- **defaulttheme**
+  - Type: `string`
+  - Description: Determines what the default theme is
+  
+- **availablethemes**
+  - Type: `string[]`
+  - Default: ["light", "dark"]
+  - Description: Defines the available themes for frontend
+  - Notes: 
+    - Additional values can be provided to expand the themes  
+	- For each custom theme, add a corresponding .css file to your mounted config folder (see [Using an optional config folder](#using-an-optional-config-folder))
+    - The filename must match the theme name defined in this array. (ie. `mytheme` needs `mytheme.css`)
