@@ -1,0 +1,13 @@
+services:
+  ftpnode:
+    image: ${DOCKER_REGISTRY-}ftpnode
+    build:
+      context: .
+      dockerfile: FTPNode/Dockerfile
+    user: root
+    volumes:
+      - ./config:/app/config
+    environment:
+      FTP__Title: "FTP cont"
+      FTP__Port: "21"
+      FTP__PageIcon: "FtpNodeIcon.png"

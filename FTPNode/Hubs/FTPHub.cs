@@ -19,7 +19,7 @@ namespace FTPNode.Hubs
                 "host", "port", "passivemode", "uploadlimit", 
                 "maxfileuploadsize", "simultaneousupdown", "maxeditsize", "disablepermchange", 
                 "enabledebug", "maxfileuploadatonce", "sizeunitformat", "enablecerttrustfunction",
-                "title",
+                "title","defaulttheme",
             };
 
         public FTPHub(ISharedStorage sharedService)

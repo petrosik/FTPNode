@@ -124,11 +124,18 @@ namespace FTPNode
                             foreach (var item1 in themes)
                             {
                                 if (File.Exists(Path.Combine(builder.Environment.ContentRootPath, "config",$"{item1}.css")))
-                                    File.Move(Path.Combine(builder.Environment.ContentRootPath, "config",$"{item1}.css"), Path.Combine(builder.Environment.ContentRootPath, "wwwroot", $"{item1}.css"));
+                                    File.Copy(Path.Combine(builder.Environment.ContentRootPath, "config",$"{item1}.css"), Path.Combine(builder.Environment.ContentRootPath, "wwwroot", $"{item1}.css"),true);
                                 else
                                     Console.WriteLine($"Warning: Theme CSS file for '{item1}' not found at 'config/{item1}.css'. Skipping copy.");
                             }
                         }
+                    }
+                    if (item.Key.ToLower() == "pageicon" && !builder.Environment.IsDevelopment())
+                    {
+                        if (File.Exists(Path.Combine(builder.Environment.ContentRootPath, "config", item.Value)))
+                            File.Copy(Path.Combine(builder.Environment.ContentRootPath, "config", item.Value), Path.Combine(builder.Environment.ContentRootPath, "wwwroot", $"favicon{Path.GetExtension(item.Value)}"),true);
+                        else
+                            Console.WriteLine($"Warning: icon file '{item.Value}' not found. Skipping copy.");
                     }
 
                     if (item.GetChildren().Any())

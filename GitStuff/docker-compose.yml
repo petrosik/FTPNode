@@ -1,6 +1,7 @@
 services:
   ftp-web:
     image: petrosik/ftpnode:latest
+    user: root
     container_name: ftp-node
     ports:
       - "8080:8080" #http

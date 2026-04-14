@@ -164,6 +164,11 @@ Example:
   - Default: false
   - Description: Determines if frontend is allowed to remember certificates and skips asking user to confirm
 
+- **pageicon**
+  - Type: `string`
+  - Description: Path to the page icon from the config folder (see [Using an optional config folder](#using-an-optional-config-folder))
+  - Note: The image should be a `.png` or `.jpg`
+
 - **defaulttheme**
   - Type: `string`
   - Description: Determines what the default theme is
