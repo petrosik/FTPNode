@@ -14,12 +14,12 @@ namespace FTPNode.Hubs
     public class FTPHub : Hub
     {
         private readonly ISharedStorage _sharedStorage;
-        private static readonly string[] _sendFrontend = 
-            { 
-                "host", "port", "passivemode", "uploadlimit", 
-                "maxfileuploadsize", "simultaneousupdown", "maxeditsize", "disablepermchange", 
+        private static readonly string[] _sendFrontend =
+            {
+                "host", "port", "passivemode", "uploadlimit",
+                "maxfileuploadsize", "simultaneousupdown", "maxeditsize", "disablepermchange",
                 "enabledebug", "maxfileuploadatonce", "sizeunitformat", "enablecerttrustfunction",
-                "title","defaulttheme",
+                "title", "availablethemes", "defaulttheme",
             };
 
         public FTPHub(ISharedStorage sharedService)
@@ -36,10 +36,6 @@ namespace FTPNode.Hubs
                     settings.Add(new() { Name = item, Value = val });
             }
             settings.Add(new() { Name = "publickey", Value = _sharedStorage.PublicKey });
-            if (!settings.Any(x=>x.Name == "title"))
-            {
-                settings.Add(new() { Name = "title", Value = "FTP Node" });
-            }
 
             await Clients.Caller.SendAsync("ReceiveInitData", settings);
             await base.OnConnectedAsync();
@@ -459,7 +455,7 @@ namespace FTPNode.Hubs
 
                 // Create and connect FTP client when SignalR client connects
                 //will need a fix for 522 session reuse required later
-                var ftpClient = new FtpClient(info.Host, new NetworkCredential(info.Username,UTF8Encoding.UTF8.GetString(_sharedStorage.Decrypt(Convert.FromBase64String(info.Password)))), info.Port)
+                var ftpClient = new FtpClient(info.Host, new NetworkCredential(info.Username, UTF8Encoding.UTF8.GetString(_sharedStorage.Decrypt(Convert.FromBase64String(info.Password)))), info.Port)
                 {
                     Config = new FtpConfig
                     {
@@ -490,7 +486,7 @@ namespace FTPNode.Hubs
                 return new(null, $"false | {ex.Message}");
             }
         }
-        public async Task<Pair<bool,string>> CheckConnection(string id)
+        public async Task<Pair<bool, string>> CheckConnection(string id)
         {
             if (!_sharedStorage._ftpClients.ContainsKey(id))
             {
@@ -504,14 +500,14 @@ namespace FTPNode.Hubs
                     var ftpClient = await SetupClient(_sharedStorage._ftpClients[id].LoginJson);
                     if (ftpClient.First == null)
                     {
-                        return new(false,ftpClient.Second);
+                        return new(false, ftpClient.Second);
                     }
                     _sharedStorage._ftpClients[id].MainClient = ftpClient.First;
                 }
                 catch (Exception e)
                 {
                     Console.WriteLine($"Error checking connection: {e.Message}");
-                    return new(false,e.Message);
+                    return new(false, e.Message);
                 }
             }
             else
@@ -533,7 +529,7 @@ namespace FTPNode.Hubs
                     _sharedStorage._ftpClients[Context.ConnectionId].MainClient.SetWorkingDirectory(_sharedStorage._ftpClients[Context.ConnectionId].CurrentPath);
                 }
             }
-                return new(true, null);
+            return new(true, null);
         }
         public async Task<X509Certificate2?> GetFtpServerCertificate(string host, int port)
         {

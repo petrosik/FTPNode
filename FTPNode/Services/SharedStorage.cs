@@ -40,6 +40,10 @@ namespace FTPNode.Services
             value = default!;
             return false;
         }
+        public bool ContainsArg(string key)
+        {
+            return _args.ContainsKey(key);
+        }
 
         public void Dispose()
         {

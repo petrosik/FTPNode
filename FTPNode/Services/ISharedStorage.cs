@@ -11,5 +11,6 @@ namespace FTPNode.Services
         void SetArg(string key, object value);
         T GetArg<T>(string key);
         bool TryGetArg<T>(string key, out T value);
+        bool ContainsArg(string key);
     }
 }

@@ -1,4 +1,5 @@
-﻿@inject Services.ISharedStorage Storage
+﻿@using Shared
+@inject Services.ISharedStorage Storage
 <!DOCTYPE html>
 <html lang="en">
 
@@ -17,7 +18,7 @@
         }
     }
     <ImportMap />
-    <link rel="icon" type="image/@(Storage.TryGetArg("pageicon", out v) ?Path.GetExtension((string)v)[1..]: "png")" href="favicon@(v!= null  ? Path.GetExtension((string)v) : ".png")" />
+    <link rel="icon" type="@(Storage.TryGetArg("pageicon", out v) ?Utils.GetMimeTypeFromExtension(Path.GetExtension((string)v)): "image/png")" href="favicon@(v!= null  ? $"1{Path.GetExtension((string)v)}" : ".png")" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="@Assets["js/helpers.js"]"></script>
     <HeadOutlet @rendermode="InteractiveWebAssembly" />

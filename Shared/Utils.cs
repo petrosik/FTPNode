@@ -208,5 +208,28 @@ namespace Shared
 
             return "application/octet-stream";
         }
+        public static string GetMimeTypeFromExtension(string extension)
+        {
+            if (string.IsNullOrWhiteSpace(extension))
+                return "application/octet-stream";
+
+            extension = extension.Trim().ToLowerInvariant();
+
+            if (!extension.StartsWith("."))
+                extension = "." + extension;
+
+            return extension switch
+            {
+                ".png" => "image/png",
+                ".jpg" => "image/jpeg",
+                ".jpeg" => "image/jpeg",
+                ".gif" => "image/gif",
+                ".bmp" => "image/bmp",
+                ".webp" => "image/webp",
+                ".svg" => "image/svg+xml",
+                ".ico" => "image/x-icon",
+                _ => "application/octet-stream"
+            };
+        }
     }
 }

@@ -7,7 +7,24 @@
 
 <PageTitle>@($"{(State.Settings.TryGetValue("title", out var v) ? v : "FTP Node")} - Settings")</PageTitle>
 <h2>Theme</h2>
-<p>Coming Soon</p>
+@if (!State.Settings.ContainsKey("availablethemes"))
+{
+    <p>No themes available.</p>
+}
+else
+{
+    <div style="display:flex;">
+        @foreach (var item in JsonSerializer.Deserialize<List<string>>(State.Settings["availablethemes"]))
+        {
+            <div style="display:flex; flex-direction:column; align-items:center; gap:0.2rem; margin-right:1rem;">
+                <div style="width:50px; height:50px; background-color:@(State.Settings.TryGetValue("themeaccentcolor", out var accent) ? accent : "#007bff"); border-radius:50%; display:flex; justify-content:center; align-items:center; color:white; font-weight:bold; cursor:pointer;" title="@item">
+                    @(item.Substring(0, 1).ToUpper())
+                </div>
+                <p style="margin:0">@item</p>
+            </div>
+        }
+    </div>
+}
 <h2>Trusted Certificates</h2>
 <div style="display:grid; grid-template-columns: 20fr 40fr 20fr 5fr">
     @foreach (var item in certs)

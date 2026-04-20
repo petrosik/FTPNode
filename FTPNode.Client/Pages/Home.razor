@@ -7,7 +7,7 @@
 @using System.Text
 @using FTPNode.Client.Components;
 @page "/"
-@page "/{*path}"
+@page "/{*path:nonfile}"
 @inject HttpClient Http
 @inject IConfiguration Env
 @inject IJSRuntime JS

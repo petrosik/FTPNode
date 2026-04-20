@@ -1,0 +1,16 @@
+﻿[data-theme="dark"] {
+    /* used both as bg and border */
+    --bg-strong: #555;
+    /* Backgrounds */
+    --bg-main: #121212;
+    --bg-surface: #1e1e1e;
+    /* Text */
+    --text-main: #ffffff;
+    --text-muted: #eeeeee;
+    /* Borders */
+    --border-main: #333;
+    /* Scrollbar */
+    --scrollbar-thumb: #7c7c7c;
+    --scrollbar-track: #202020;
+    --border-radius-main: 5px;
+}
