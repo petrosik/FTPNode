@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Shared
 {
@@ -119,5 +120,16 @@ namespace Shared
             Name = name;
             Proggress = proggress;
         }
+    }
+
+    [JsonSerializable(typeof(RememberMeDto))]
+    public class RememberMeDto
+    {
+        public string Username { get; set; }
+        public string Host { get; set; }
+        public int Port { get; set; } = 21;
+        public bool RememberMe { get; set; } = false;
+        public bool PassiveMode { get; set; } = true;
+        public string Theme { get; set; } = "light";
     }
 }

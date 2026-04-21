@@ -1,4 +1,6 @@
-﻿namespace Shared
+﻿using System.Text.Json;
+
+namespace Shared
 {
     public class AppState
     {
@@ -87,5 +89,12 @@
 
         public bool EditModeText = false;
         public Dictionary<string, UploadQueItemDto> UploadQue = new();
+        public RememberMeDto RememberMe { get; set; } = new();
+        public event Func<bool,Task>? SaveRememberClicked;
+        public async Task TriggerSaveRemember(bool e)
+        {
+            if (SaveRememberClicked is not null)
+                await SaveRememberClicked.Invoke(e);
+        }
     }
 }

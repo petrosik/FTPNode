@@ -3,7 +3,7 @@
 @inherits LayoutComponentBase
 @inject AppState State
 @inject NavigationManager Nav
-<div class="page" data-theme="@(State.Settings.TryGetValue("defaulttheme", out var v) ? v : "light")">
+<div class="page" data-theme="@(State.RememberMe.Theme)">
     <div class="sidebar">
         <NavMenu />
     </div>

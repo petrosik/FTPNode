@@ -21,9 +21,7 @@
 </div>
 @if (!LoggedIn)
 {
-    //use overlaywindow later
-    <div style="width:100vw; height:100vh; background-color:rgba(0,0,0,0.3	); position:absolute; top:0; left:0; z-index:2050; display:flex; justify-content:center; align-items:center">
-        <div style="background-color:white; border-radius:5px; min-width: 95%;width:65%; height:65%; display:flex; align-items:center;flex-direction:column">
+    <OverlayWindow XPercent="95" YPercent="85">
             <h2 style="font-weight:bold; padding:1%; height:auto; margin:0;">Login</h2>
             @if (!Loading)
             {
@@ -56,13 +54,13 @@
                         <div style="display:flex; flex-direction:column; justify-content:space-between;gap:2vh">
                             <label>
                                 Remember Me:
-                                <InputCheckbox @bind-Value=RememberMe.RememberMe @oninput=OnRememberChange />
+                                <InputCheckbox @bind-Value=State.RememberMe.RememberMe @oninput=@((e)=>OnRememberChange((bool)e.Value)) />
                             </label>
                             @if (!State.Settings.ContainsKey("passivemode"))
                             {
                                 <label>
                                     Passive Mode:
-                                    <InputCheckbox @bind-Value=RememberMe.PassiveMode />
+                                    <InputCheckbox @bind-Value=State.RememberMe.PassiveMode />
                                 </label>
                             }
                         </div>
@@ -90,8 +88,7 @@
             <div>
                 <p style="color:red;">@Error</p>
             </div>
-        </div>
-    </div>
+    </OverlayWindow>
 }
 @if (UploadRunning || DownloadRunning || State.UploadQue.Count > 0 || DownloadQue.Count > 0)
 {
@@ -359,7 +356,6 @@ else
     private bool UploadRunning = false;
     private bool DownloadRunning = false;
     private LoginJson LoginStuff { get; set; } = new();
-    private RememberMeDto RememberMe { get; set; } = new();
     private bool ShowPass { get; set; } = false;
     private HubConnection? Hub { get; set; }
     private bool Loading { get; set; } = true;
@@ -621,7 +617,7 @@ else
     {
         Error = "";
         Connecting = true;
-        if (RememberMe.RememberMe)
+        if (State.RememberMe.RememberMe)
         {
             await SaveRememberMe();
         }
@@ -1056,11 +1052,10 @@ else
                 _upDownSemaphore.Release();
         }
     }
-    private async Task OnRememberChange(ChangeEventArgs e)
+    private async Task OnRememberChange(bool e)
     {
-        bool newValue = (bool)e.Value;
-        RememberMe.RememberMe = newValue;
-        if (!newValue) { await JS.InvokeVoidAsync("localStorage.removeItem", "rememberMe"); return; }
+        State.RememberMe.RememberMe = e;
+        if (!e) { await JS.InvokeVoidAsync("localStorage.removeItem", "rememberMe"); return; }
         await SaveRememberMe();
     }
     private async Task OnRememberCertChange(ChangeEventArgs e)
@@ -1103,14 +1098,18 @@ else
             }
             catch
             {
+                if (State.Settings.TryGetValue("defaulttheme", out var deftheme))
+                {
+                    State.RememberMe.Theme = deftheme;
+                }
                 Console.WriteLine("Error In Load RememberMe");
             }
             if (rememberMe != null)
             {
-                RememberMe = rememberMe;
-                LoginStuff.Host = RememberMe.Host;
-                LoginStuff.Port = RememberMe.Port;
-                LoginStuff.Username = RememberMe.Username;
+                State.RememberMe = rememberMe;
+                LoginStuff.Host = State.RememberMe.Host;
+                LoginStuff.Port = State.RememberMe.Port;
+                LoginStuff.Username = State.RememberMe.Username;
                 StateHasChanged();
             }
             Loading = false;
@@ -1156,11 +1155,11 @@ else
     }
     private async Task SaveRememberMe()
     {
-        RememberMe.Host = LoginStuff.Host;
-        RememberMe.Port = LoginStuff.Port;
-        RememberMe.Username = LoginStuff.Username;
-        RememberMe.PassiveMode = LoginStuff.PassiveMode;
-        await JS.InvokeVoidAsync("localStorage.setItem", "rememberMe", JsonSerializer.Serialize(RememberMe));
+        State.RememberMe.Host = LoginStuff.Host;
+        State.RememberMe.Port = LoginStuff.Port;
+        State.RememberMe.Username = LoginStuff.Username;
+        State.RememberMe.PassiveMode = LoginStuff.PassiveMode;
+        await JS.InvokeVoidAsync("localStorage.setItem", "rememberMe", JsonSerializer.Serialize(State.RememberMe));
     }
     private async void GetDirectory(string? path = null, bool ignoreHistory = false, bool frombrowser = false)
     {
@@ -1387,6 +1386,8 @@ else
         State.CreateFolderClicked += CreateFolderDialog;
         State.PermChangeClicked += ChangePerms;
         State.OnChange += HandleStateChange;
+        State.SaveRememberClicked -= OnRememberChange;
+		State.SaveRememberClicked += OnRememberChange;
         Nav.LocationChanged += OnLocationChanged;
         base.OnInitialized();
     }

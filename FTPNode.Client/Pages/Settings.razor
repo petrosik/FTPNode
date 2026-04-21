@@ -17,7 +17,7 @@ else
         @foreach (var item in JsonSerializer.Deserialize<List<string>>(State.Settings["availablethemes"]))
         {
             <div style="display:flex; flex-direction:column; align-items:center; gap:0.2rem; margin-right:1rem;">
-                <div style="width:50px; height:50px; background-color:@(State.Settings.TryGetValue("themeaccentcolor", out var accent) ? accent : "#007bff"); border-radius:50%; display:flex; justify-content:center; align-items:center; color:white; font-weight:bold; cursor:pointer;" title="@item">
+                <div data-theme="@item" @onclick=@(() => { State.RememberMe.Theme = item; State.TriggerSaveRemember(true); }) style="width:50px; height:50px; background-color: color-mix(in srgb, var(--bg-main, #007bff) 85%, black); border-radius:50%; display:flex; justify-content:center; align-items:center; color:white; font-weight:bold; cursor:pointer;" title="@item">
                     @(item.Substring(0, 1).ToUpper())
                 </div>
                 <p style="margin:0">@item</p>
@@ -25,6 +25,7 @@ else
         }
     </div>
 }
+<br />
 <h2>Trusted Certificates</h2>
 <div style="display:grid; grid-template-columns: 20fr 40fr 20fr 5fr">
     @foreach (var item in certs)
