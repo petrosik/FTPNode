@@ -1,5 +1,6 @@
 ﻿@using Shared
 @inject Services.ISharedStorage Storage
+@inject AppState State
 <!DOCTYPE html>
 <html lang="en">
 
@@ -27,7 +28,7 @@
     <title>@(Storage.TryGetArg("title", out v)?v:"FTP Node")</title>
 </head>
 
-<body>
+<body data-theme="@(Storage.TryGetArg("defaulttheme", out v)? v:"light")">
     <Routes @rendermode="InteractiveWebAssembly" />
     <script src="_framework/blazor.web.js"></script>
 </body>

@@ -89,12 +89,24 @@ namespace Shared
 
         public bool EditModeText = false;
         public Dictionary<string, UploadQueItemDto> UploadQue = new();
-        public RememberMeDto RememberMe { get; set; } = new();
-        public event Func<bool,Task>? SaveRememberClicked;
-        public async Task TriggerSaveRemember(bool e)
+        public RememberSettingsDto RememberMe 
+        {
+            get => _RememberMe;
+            set
+            {
+                if (_RememberMe != value)
+                {
+                    _RememberMe = value;
+                    NotifyStateChanged();
+                }
+            }
+        }
+        private RememberSettingsDto _RememberMe =new();
+        public event Func<Task>? SaveRememberClicked;
+        public async Task TriggerSaveRemember()
         {
             if (SaveRememberClicked is not null)
-                await SaveRememberClicked.Invoke(e);
+                await SaveRememberClicked.Invoke();
         }
     }
 }

@@ -171,6 +171,7 @@ Example:
 
 - **defaulttheme**
   - Type: `string`
+  - Default: light
   - Description: Determines what the default theme is
   
 - **availablethemes**
@@ -181,3 +182,4 @@ Example:
     - Additional values can be provided to expand the themes  
 	- For each custom theme, add a corresponding .css file to your mounted config folder (see [Using an optional config folder](#using-an-optional-config-folder))
     - The filename must match the theme name defined in this array. (ie. `mytheme` needs `mytheme.css`)
+	- [Example of a .css file](/GitStuff/custom-theme.css)

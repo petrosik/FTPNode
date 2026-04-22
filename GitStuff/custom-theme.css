@@ -1,15 +1,15 @@
-﻿[data-theme="light"] {
+﻿[data-theme="example"] {
     /* used both as bg and border */
     --bg-strong: #b5b5b5;
     /* Backgrounds */
-    --bg-main: #f5f5f5;
+    --bg-main: aqua;
     --bg-surface: #ffffff;
     /* Text */
-    --text-main: #1a1a1a;
+    --text-main: red;
     --text-muted: #555555;
     /* Borders */
     --border-main: #d0d0d0;
-    --border-radius-main: 2px;
+	--border-radius-main: 2px;
     /* Scrollbar */
     --scrollbar-thumb: #c9c9c9;
     --scrollbar-track: #ffffff;
@@ -19,3 +19,4 @@
     --row-dark: #f0f0f0;
     --row-selected: #b5b5b5;
 }
+/* If you know css you can also modify other components below manualy */

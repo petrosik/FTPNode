@@ -116,62 +116,51 @@ h1:focus {
     display:none;
 }
 
-.button-light {
-    background-color: #eeeeee;
-    color: #222;
-    border: none;
-    border-radius: 2px;
-    /*    border: 1px solid #bbb;*/
+.button-row {
+    color: var(--text-main);
+    border-bottom: none;
     cursor: pointer;
-    transition: background 0.3s, border 0.3s;
+    transition: background 0.15s ease;
     padding-left: 0.25rem;
     padding-right: 0.25rem;
 }
 
-    .button-light:hover {
-        background-color: #e0e0e0;
-        border-color: #aaa;
+    /* alternating colors controlled by Blazor */
+    .button-row.row-light {
+        background: var(--row-light);
     }
 
-.button-dark {
-    background-color: #bbbbbb;
-    color: #111;
-    border: none;
-    border-radius: 2px;
-    /*    border: 1px solid #888;*/
-    cursor: pointer;
-    transition: background 0.3s, border 0.3s;
-    padding-left: 0.25rem;
-    padding-right: 0.25rem;
-}
-
-    .button-dark:hover {
-        background-color: #999999;
-        border-color: #666;
+    .button-row.row-dark {
+        background: var(--row-dark);
     }
-.button-selected {
-    background-color: #82e5ff;
-    color: #111;
-    padding-left: 0.25rem;
-    padding-right: 0.25rem;
-}
+
+    /* hover */
+    .button-row:hover {
+        background: var(--bg-strong);
+    }
+
+    /* selected overrides everything */
+    .button-row.selected {
+        background: var(--row-selected);
+        color: var(--bg-main);
+    }
 
 .control-button {
     border: none;
-    aspect-ratio:1;
+    aspect-ratio: 1;
     padding: 0.25rem;
     border-radius: 5px;
-    background-color: #ddd;
-    height:100%;
+    background-color: var(--scrollbar-thumb);
+    height: 100%;
 }
 .button-context{
     height:30px;
     width:100%;
     text-align:left;
-    border: 1px solid grey
+    border: 1px solid var(--border-main);
 }
-    .button-context:hover {
-        background-color: #cacaca
+    .button-context:hover, control-button:hover {
+        background-color: var(--bg-strong)
     }
 
 .scrollable {
@@ -179,6 +168,35 @@ h1:focus {
     overflow-x: hidden;
     overflow-y: auto;
 }
+[data-theme] .scrollable::-webkit-scrollbar {
+    width: 20px;
+}
+
+[data-theme] .scrollable::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: var(--border-radius-main);
+}
+
+[data-theme] .scrollable::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track);
+}
+
+[data-theme] *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+}
+
+[data-theme] *::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track);
+}
+
+/* Firefox */
+[data-theme] .scrollable {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
 .scrollable-hidden {
     overflow: auto; /* scrollable */
     scrollbar-width: none; /* Firefox */
@@ -214,6 +232,119 @@ h1:focus {
     max-width: 45%;
 }
 
+.page {
+    min-height: 100vh;
+}
+
+/* Input */
+input,
+textarea,
+select {
+    background: var(--bg-surface);
+    color: var(--text-main);
+    border: 1px solid var(--border-main);
+    border-radius: var(--border-radius-main);
+    padding: 3px 5px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+    /* Placeholder */
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--text-muted);
+        opacity: 0.7;
+    }
+
+    /* Hover */
+    input:hover,
+    textarea:hover,
+    select:hover {
+        border-color: var(--bg-strong);
+    }
+
+    /* Focus */
+    input:focus,
+    textarea:focus,
+    select:focus {
+        border-color: var(--bg-strong);
+        box-shadow: 0 0 0 2px rgba(124, 124, 124, 0.25);
+    }
+
+    /* Disabled */
+    input:disabled,
+    textarea:disabled,
+    select:disabled {
+        background: var(--bg-main);
+        color: var(--text-muted);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    /* Autofill fix (Chrome) */
+    input:-webkit-autofill {
+        -webkit-box-shadow: 0 0 0 1000px var(--bg-surface) inset;
+        -webkit-text-fill-color: var(--text-main);
+    }
+
+/* Button */
+button,
+.btn {
+    background: var(--bg-surface);
+    color: var(--text-main);
+    border: 1px solid var(--border-main);
+    border-radius: var(--border-radius-main);
+    padding: 4px 10px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+    user-select: none;
+}
+
+    /* Hover */
+    button:hover,
+    .btn:hover {
+        border-color: var(--bg-strong);
+        background: var(--bg-main);
+    }
+
+    /* Active / pressed */
+    button:active,
+    .btn:active {
+        transform: translateY(1px);
+    }
+
+    /* Focus */
+    button:focus-visible,
+    .btn:focus-visible {
+        outline: none;
+        border-color: var(--bg-strong);
+        box-shadow: 0 0 0 2px rgba(124, 124, 124, 0.25);
+    }
+
+    /* Disabled state */
+    button:disabled,
+    .btn:disabled {
+        background: var(--bg-main);
+        color: var(--text-muted);
+        border-color: var(--border-main);
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+[data-theme] *:not(.bi2) {
+    color: var(--text-main);
+}
+
+[data-theme] {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+}
+
+.top-row-top {
+    background-color: var(--bg-surface) !important;
+    border-bottom: var(--border-main) !important;
+}
 @media (max-width: 768px) {
     .responsive-svg {
         max-width: 25%;

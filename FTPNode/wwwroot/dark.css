@@ -5,12 +5,17 @@
     --bg-main: #121212;
     --bg-surface: #1e1e1e;
     /* Text */
-    --text-main: #ffffff;
+    --text-main: #e4e4e4;
     --text-muted: #eeeeee;
     /* Borders */
     --border-main: #333;
+    --border-radius-main: 2px;
     /* Scrollbar */
     --scrollbar-thumb: #7c7c7c;
     --scrollbar-track: #202020;
-    --border-radius-main: 5px;
+
+    /* Rows */
+    --row-light: var(--bg-surface);
+    --row-dark: #242424;
+    --row-selected: var(--scrollbar-thumb);
 }

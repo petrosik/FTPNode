@@ -124,3 +124,29 @@ window.helpers.encryptPasswordWithPublicKey = async (password, base64Key) => {
     bytes.forEach(b => binary += String.fromCharCode(b));
     return btoa(binary);
 }
+
+window.helpers._lastNotificationKey = null;
+window.helpers.showNotification = async (title, message) => {
+    const key = title + "|" + message;
+
+    // prevent immediate duplicates
+    if (window.helpers._lastNotificationKey === key) return;
+
+    window.helpers._lastNotificationKey = key;
+
+    setTimeout(() => {
+        window.helpers._lastNotificationKey = null;
+    }, 2000);
+
+    if (!("Notification" in window)) return;
+
+    let permission = Notification.permission;
+
+    if (permission === "default") {
+        permission = await Notification.requestPermission();
+    }
+
+    if (permission === "granted") {
+        new Notification(title, { body: message });
+    }
+};

@@ -3,7 +3,7 @@
 	 @onkeydown="HandleKeyDown"
 	 tabindex="0"
 	 class="@OuterClass">
-	<div class="@InnerClass" style="@Shared.Utils.StyleMerge($"height:{YPercent}%; width:{XPercent}%; border-radius:10px; display:flex; justify-content:center; align-items:center; flex-direction:column; gap:8%; background-color:white", InnerStyle)"
+	<div class="@InnerClass" style="@Shared.Utils.StyleMerge($"height:{YPercent}%; width:{XPercent}%; border-radius:10px; display:flex; justify-content:center; align-items:center; flex-direction:column; gap:8%; background-color:var(--bg-main)", InnerStyle)"
 		 @onclick:stopPropagation="true">
 		@ChildContent
 	</div>

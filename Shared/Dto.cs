@@ -122,14 +122,14 @@ namespace Shared
         }
     }
 
-    [JsonSerializable(typeof(RememberMeDto))]
-    public class RememberMeDto
+    [JsonSerializable(typeof(RememberSettingsDto))]
+    public class RememberSettingsDto
     {
         public string Username { get; set; }
         public string Host { get; set; }
         public int Port { get; set; } = 21;
         public bool RememberMe { get; set; } = false;
         public bool PassiveMode { get; set; } = true;
-        public string Theme { get; set; } = "light";
+        public string Theme { get; set; } = "";
     }
 }
