@@ -55,8 +55,8 @@ namespace Shared
                 await CreateFolderClicked.Invoke();
         }
 
-        private FtpItemDto? _Selected = null;
-        public FtpItemDto? Selected
+        private List<FtpItemDto?> _Selected = new();
+        public List<FtpItemDto?> Selected
         {
             get => _Selected;
             set

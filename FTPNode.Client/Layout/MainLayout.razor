@@ -13,37 +13,37 @@
             @if (State.Selected != null)
             {
                 <div style="height:100%; display:flex; gap:0.2rem; flex-shrink: 0; min-width: max-content; margin-left: auto;">
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Delete,text: out _))
+                    @if (State.Selected.Where(x => x != null).Count() > 1 || State.Selected.Where(x => x != null).Count() == 1 && Utils.AllowedActions(State.Selected.Where(x => x != null).ElementAt(0), AllowedAction.Delete, text: out _))
                     {
-                        <ConfirmButton class="control-button" title="Delete Selected" DialogQuestion="@($"Are you sure you want to delete {State.Selected.Name}?")" OnClick="State.TriggerDelete">
+                        <ConfirmButton class="control-button" title="Delete Selected" DialogQuestion="@($"Are you sure you want to delete {string.Join(", ", State.Selected.Select(x => x.Name))}?")" OnClick="State.TriggerDelete">
                             <i style="font-size:2rem" class="fa-solid fa-trash-can"></i>
                         </ConfirmButton>
                     }
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Edit, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out var maxedits) && int.TryParse(maxedits, out var maxe) ? maxe : 1048576))
+                    @if (State.Selected.Where(x => x != null).Count() == 1 && Utils.AllowedActions(State.Selected.Where(x => x != null).ElementAt(0), AllowedAction.Edit, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out var maxedits) && int.TryParse(maxedits, out var maxe) ? maxe : 1048576))
                     {
-                        <button class="control-button" title="Edit" @onclick="State.TriggerEdit" disabled="@State.UploadQue.Any(x => $"{State.Selected.Name}.tmp" == x.Value.Name && x.Value.Proggress >= 0 && x.Value.Proggress < 100)">
+                        <button class="control-button" title="Edit" @onclick="State.TriggerEdit" disabled="@State.UploadQue.Any(x => $"{State.Selected.Where(x => x != null).ElementAt(0).Name}.tmp" == x.Value.Name && x.Value.Proggress >= 0 && x.Value.Proggress < 100)">
                             <i style="font-size:2rem" class="fa-solid fa-pen-to-square"></i>
                         </button>
                     }
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Read, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out maxedits) && int.TryParse(maxedits, out maxe) ? maxe : 1048576))
+                    @if (State.Selected.Where(x => x != null).Count() == 1 && Utils.AllowedActions(State.Selected.Where(x => x != null).ElementAt(0), AllowedAction.Read, text: out State.EditModeText, State.Settings.TryGetValue("maxeditsize", out maxedits) && int.TryParse(maxedits, out maxe) ? maxe : 1048576))
                     {
-                        <button class="control-button" title="View" @onclick="State.TriggerView" disabled="@State.UploadQue.Any(x => $"{State.Selected.Name}.tmp" == x.Value.Name && x.Value.Proggress >= 0 && x.Value.Proggress < 100)">
+                        <button class="control-button" title="View" @onclick="State.TriggerView" disabled="@State.UploadQue.Any(x => $"{State.Selected.Where(x => x != null).ElementAt(0).Name}.tmp" == x.Value.Name && x.Value.Proggress >= 0 && x.Value.Proggress < 100)">
                             <i style="font-size:2rem" class="fa-solid fa-expand"></i>
                         </button>
                     }
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.ChangePermissions, text: out _) && (!State.Settings.TryGetValue("disablepermchange", out var allow) || !bool.TryParse(allow, out var val) || !val))
+                    @if (State.Selected.Where(x => x != null).Count() > 1 || State.Selected.Where(x => x != null).Count() == 1 && Utils.AllowedActions(State.Selected.Where(x => x != null).ElementAt(0), AllowedAction.ChangePermissions, text: out _) && (!State.Settings.TryGetValue("disablepermchange", out var allow) || !bool.TryParse(allow, out var val) || !val))
                     {
                         <button class="control-button" title="Permission Change" @onclick="State.TriggerPermChange">
                             <i style="font-size:2rem" class="fa-solid fa-unlock-keyhole"></i>
                         </button>
                     }
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Download, text: out _))
+                    @if (State.Selected.Where(x => x != null).Count() > 1 || State.Selected.Where(x => x != null).Count() == 1 && Utils.AllowedActions(State.Selected.Where(x => x != null).ElementAt(0), AllowedAction.Download, text: out _))
                     {
                         <button class="control-button" title="Download" @onclick="State.TriggerDownload">
                             <i style="font-size:2rem" class="fa-solid fa-download"></i>
                         </button>
                     }
-                    @if (Utils.AllowedActions(State.Selected, AllowedAction.Rename, text: out _))
+                    @if (State.Selected.Where(x => x != null).Count() > 1 || State.Selected.Where(x => x != null).Count() == 1 && Utils.AllowedActions(State.Selected.Where(x => x != null).ElementAt(0), AllowedAction.Rename, text: out _))
                     {
                         <button class="control-button" title="Rename" @onclick="State.TriggerRename">
                             <i style="font-size:2rem" class="fa-solid fa-i"></i>
