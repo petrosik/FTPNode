@@ -42,4 +42,12 @@ namespace FTPNode.Client
             return new MemoryStream(_data);
         }
     }
+    public class KeyInfo
+    {
+        public string Key { get; set; }
+        public bool Ctrl { get; set; }
+        public bool Shift { get; set; }
+        public bool Alt { get; set; }
+        public bool Meta { get; set; }
+    }
 }

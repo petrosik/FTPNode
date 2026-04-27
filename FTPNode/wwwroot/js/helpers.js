@@ -150,3 +150,22 @@ window.helpers.showNotification = async (title, message) => {
         new Notification(title, { body: message });
     }
 };
+window.helpers.clickById = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.click();
+    }
+};
+window.helpers.globalKeyboard = {
+    init: function (dotnetHelper) {
+        window.addEventListener("keydown", function (e) {
+            dotnetHelper.invokeMethodAsync("OnKeyDown", {
+                key: e.key,
+                ctrl: e.ctrlKey,
+                shift: e.shiftKey,
+                alt: e.altKey,
+                meta: e.metaKey
+            });
+        });
+    }
+};

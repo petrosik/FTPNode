@@ -15,7 +15,7 @@
                 <div style="height:100%; display:flex; gap:0.2rem; flex-shrink: 0; min-width: max-content; margin-left: auto;">
                     @if (State.Selected.Count(x => x != null) > 1 || State.Selected.Count(x => x != null) == 1 && Utils.AllowedActions(State.Selected.Where(x => x != null).ElementAt(0), AllowedAction.Delete, text: out _))
                     {
-                        <ConfirmButton class="control-button" title="Delete Selected" DialogQuestion="@($"Are you sure you want to delete {string.Join(", ", State.Selected.Where(x => x != null).Select(x => x.Name))}?")" OnClick="State.TriggerDelete">
+                        <ConfirmButton id="DeleteConfirm" class="control-button" title="Delete Selected" DialogQuestion="@($"Are you sure you want to delete {string.Join(", ", State.Selected.Where(x => x != null).Select(x => x.Name))}?")" OnClick="State.TriggerDelete">
                             <i style="font-size:2rem" class="fa-solid fa-trash-can"></i>
                         </ConfirmButton>
                     }
